@@ -139,6 +139,10 @@ services:
       redis: { condition: service_healthy }
       minio: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
+      # Without this, `up --wait api web worker` never starts minio-init —
+      # nothing depended on it — and the evidence bucket silently does not
+      # exist after a `make reset`. Every upload then fails with NoSuchBucket.
+      minio-init: { condition: service_completed_successfully }
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.API_PORT||3000)+'/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s

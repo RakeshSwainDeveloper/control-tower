@@ -102,4 +102,73 @@ describe('partition maintenance privileges', () => {
       expect(months, `missing partition for ${stamp(d)}`).toContain(stamp(d));
     }
   });
+  /* ── Phase 6 regression: privileges, not just RLS ───────────────── */
+
+  it('every partition carries EXACTLY its parent\'s privileges for ct_app', async () => {
+    // Phase 6 found the second half of the Phase 1 lesson: a partition does not
+    // inherit its parent's GRANTS either. approval_decisions was append-only
+    // through the parent and fully writable through the partition —
+    //
+    //     UPDATE app.approval_decisions        → permission denied
+    //     UPDATE app.approval_decisions_202609 → UPDATE 0
+    //
+    // Asserted across the WHOLE catalogue rather than for the tables known to
+    // be append-only today, because the next append-only table is the one that
+    // will be forgotten.
+    const mismatches = await withoutTenant(owner, 'catalogue inspection', async (trx) => {
+      const r = await sql<{ partition: string; parent: string; extra: string }>`
+        WITH parts AS (
+          SELECT c.relname AS partition, p.relname AS parent
+          FROM pg_inherits i
+          JOIN pg_class c ON c.oid = i.inhrelid
+          JOIN pg_class p ON p.oid = i.inhparent
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'app' AND c.relkind = 'r'
+        ), privs AS (
+          SELECT parts.partition, parts.parent, x.priv,
+                 has_table_privilege('ct_app', format('app.%I', parts.partition)::regclass, x.priv) AS on_part,
+                 has_table_privilege('ct_app', format('app.%I', parts.parent)::regclass,    x.priv) AS on_parent
+          FROM parts,
+               unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE']) AS x(priv)
+        )
+        SELECT partition, parent, string_agg(priv, ',' ORDER BY priv) AS extra
+        FROM privs WHERE on_part <> on_parent
+        GROUP BY partition, parent ORDER BY 1
+      `.execute(trx);
+      return r.rows;
+    });
+    expect(
+      mismatches,
+      `partitions whose ct_app privileges differ from their parent:\n` +
+        mismatches.map((m) => `  ${m.partition} vs ${m.parent}: ${m.extra}`).join('\n'),
+    ).toEqual([]);
+  });
+
+  it('a partition created in the FUTURE is locked down at creation, not by a later sweep', async () => {
+    // 0003 revoked over the partitions that existed at migration time and its
+    // comment claimed that stopped future ones being created wider. It did not:
+    // a new partition takes its ACL from ALTER DEFAULT PRIVILEGES. The audit
+    // trail would have become mutable at the first month roll the worker did.
+    await withoutTenant(db, 'partition maintenance', async (trx) => {
+      await sql`SELECT app.ensure_month_partition('app.audit_log'::regclass, ${PROBE_MONTH}::date)`
+        .execute(trx);
+    });
+
+    const grants = await withoutTenant(owner, 'catalogue inspection', async (trx) => {
+      const r = await sql<{ privilege_type: string }>`
+        SELECT privilege_type FROM information_schema.role_table_grants
+        WHERE table_schema='app' AND grantee='ct_app' AND table_name=${PROBE_NAME}
+        ORDER BY privilege_type
+      `.execute(trx);
+      return r.rows.map((x) => x.privilege_type);
+    });
+    expect(grants).toEqual(['INSERT', 'SELECT']);
+
+    // And prove it, rather than trusting the catalogue: ct_app attempts the
+    // write that used to succeed.
+    await expect(
+      withoutTenant(db, 'tamper probe', (trx) =>
+        sql.raw(`UPDATE app.${PROBE_NAME} SET action = 'delete' WHERE false`).execute(trx)),
+    ).rejects.toThrow(/permission denied/i);
+  });
 });

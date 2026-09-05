@@ -84,8 +84,14 @@ describe('schema conventions', () => {
       `.execute(trx);
       return r.rows;
     });
-    // projects.contract_value/currency and work_items.planned_rate
-    expect(guarded.map((g) => g.table_name).sort()).toEqual(['projects', 'work_items']);
+      // projects.contract_value/currency, work_items.planned_rate, and
+      // approval_instances.amount/currency — the last added in Phase 6.
+      //
+      // Asserted EXACTLY, not as a superset: a new money-bearing column added
+      // without its CHECK would slip past a superset assertion, and that is the
+      // precise mistake the no-money boundary exists to prevent.
+      expect(guarded.map((g) => g.table_name).sort())
+        .toEqual(['approval_instances', 'projects', 'work_items']);
   });
 
   it('every table that records who acted can also record AS WHAT', async () => {

@@ -12,6 +12,11 @@ import { TenancyModule } from './modules/tenancy/tenancy.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { PlatformModule } from './modules/platform/platform.module.js';
 import { ProjectsModule } from './modules/projects/projects.module.js';
+import { EvidenceModule } from './modules/evidence/evidence.module.js';
+import { SyncModule } from './modules/sync/sync.module.js';
+import { ProgressModule } from './modules/progress/progress.module.js';
+import { ApprovalModule } from './modules/approval/approval.module.js';
+import { IssuesModule } from './modules/issues/issues.module.js';
 import { AuthGuard } from './modules/auth/auth.guard.js';
 import { PermissionGuard } from './modules/access/permission.guard.js';
 
@@ -56,7 +61,8 @@ export class CoreModule {}
  * denies without @RequirePermission() or @NoPermissionRequired().
  */
 @Module({
-  imports: [CoreModule, AccessModule, AuthModule, TenancyModule, UsersModule, ProjectsModule, PlatformModule, HealthModule],
+  imports: [CoreModule, AccessModule, AuthModule, TenancyModule, UsersModule, ProjectsModule, EvidenceModule, SyncModule, ProgressModule, ApprovalModule, IssuesModule,
+    PlatformModule, HealthModule],
   providers: [
     { provide: APP_GUARD, useClass: AuthGuard },        // 1st: who are you
     { provide: APP_GUARD, useClass: PermissionGuard },  // 2nd: may you

@@ -52,9 +52,9 @@ infra/
 | **P1 · Foundation** | ✅ **Complete — verified end-to-end 5 Sep 2026, 27 tests passing** |
 | **P2 · Tenancy, Identity & Access** | ✅ **Complete** — 13 migrations, 32 routes, 71 tests |
 | **P3 · Project Foundation** | ✅ **Complete** — 20 migrations, 45 routes, 80 tests, typecheck clean |
-| P4 · Evidence + Sync | next |
-| P5 · Core Loop | — |
-| P6 · Approval + Issues | — |
+| **P4 · Evidence + Sync** | ✅ **Complete** — 22 migrations, 60 routes, 98 tests, **PT-1 gate passed** |
+| **P5 · Core Loop** | ✅ **Complete** — 23 migrations, 70 routes, 112 tests |
+| P6 · Approval + Issues | next |
 | P7 · Web UI | — |
 | P8 · Dashboard + Hardening | — |
 
