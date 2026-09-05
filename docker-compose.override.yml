@@ -1,0 +1,86 @@
+# Development overrides: exposed ports, hot reload, source bind-mounts.
+# Loaded automatically by `docker compose up`.
+services:
+
+  postgres:
+    ports: ["5432:5432"]
+    command:
+      - postgres
+      - -c
+      - log_statement=none
+      - -c
+      - log_min_duration_statement=500
+
+  redis:
+    ports: ["6379:6379"]
+
+  minio:
+    ports: ["9000:9000", "9001:9001"]
+
+  mailpit:
+    ports: ["8025:8025", "1025:1025"]
+
+  migrate:
+    build:
+      target: dev
+    command: ["pnpm", "--filter", "@ct/api", "migrate:up"]
+    volumes:
+      - ./apps:/app/apps
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/worker/node_modules
+      - /app/packages/contracts/node_modules
+      - /app/packages/db/node_modules
+
+  api:
+    build:
+      target: dev
+    command: ["pnpm", "--filter", "@ct/api", "dev"]
+    ports: ["3000:3000"]
+    environment:
+      LOG_LEVEL: debug
+      LOG_PRETTY: "true"
+    volumes:
+      - ./apps:/app/apps
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/worker/node_modules
+      - /app/packages/contracts/node_modules
+      - /app/packages/db/node_modules
+
+  worker:
+    build:
+      target: dev
+    command: ["pnpm", "--filter", "@ct/worker", "dev"]
+    environment:
+      LOG_PRETTY: "true"
+    volumes:
+      - ./apps:/app/apps
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/worker/node_modules
+      - /app/packages/contracts/node_modules
+      - /app/packages/db/node_modules
+
+  web:
+    build:
+      target: dev
+    command: ["pnpm", "--filter", "@ct/web", "dev", "--host", "0.0.0.0"]
+    ports: ["5173:5173"]
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000/api/v1
+    volumes:
+      - ./apps:/app/apps
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/contracts/node_modules
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5173/"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 30s

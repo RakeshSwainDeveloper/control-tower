@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.turbo
+**/.turbo
+.git
+.data
+coverage
+playwright-report
+test-results
+*.md
+!README.md
+.env
+.env.*
+!.env.example
+.claude

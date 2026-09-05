@@ -1,0 +1,30 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "../..",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": [
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@ct/contracts": [
+        "../../packages/contracts/src/index.ts"
+      ],
+      "@ct/db": [
+        "../../packages/db/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../../packages/*/src/**/*",
+    "../api/src/config/**/*"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "dist"
+  ]
+}

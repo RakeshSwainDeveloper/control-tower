@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# secrets — never commit
+.env
+.env.*
+!.env.example
+
+# local volumes
+.data/
+pgdata/
+miniodata/
+
+# editor / os
+.DS_Store
+.idea/
+*.swp
+
+# test artefacts
+playwright-report/
+test-results/

@@ -1,0 +1,50 @@
+/* Phase 1 shell only. The real token system lands in Phase 7. Values here
+   already follow the agreed palette (STACK_AND_DOCKER_PLAN.md §6): light-first,
+   because site users work in sunlight. */
+:root {
+  --primary: #0f172a;
+  --accent: #0369a1;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --fg: #020617;
+  --muted-fg: #475569;
+  --ok: #15803d;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+.shell { max-width: 46rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+header { display: flex; align-items: center; gap: 0.875rem; margin-bottom: 2rem; }
+.mark {
+  width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; flex: none;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+}
+h1 { font-size: 1.375rem; margin: 0; letter-spacing: -0.01em; }
+.sub { margin: 0.125rem 0 0; color: var(--muted-fg); font-size: 0.875rem; }
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 0.75rem; padding: 1.5rem;
+}
+h2 { font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.06em;
+     color: var(--muted-fg); margin: 0 0 1.25rem; font-weight: 600; }
+dl { display: grid; grid-template-columns: 10rem 1fr; gap: 0.75rem 1rem; margin: 0; }
+dt { color: var(--muted-fg); font-size: 0.9375rem; }
+dd { margin: 0; font-size: 0.9375rem; font-weight: 500; }
+.ok { color: var(--ok); } .bad { color: var(--bad); } .pending { color: var(--muted-fg); }
+.note { margin: 1.5rem 0 0; padding-top: 1.25rem; border-top: 1px solid var(--border);
+        color: var(--muted-fg); font-size: 0.8125rem; }
+code { background: var(--bg); border: 1px solid var(--border); border-radius: 0.25rem;
+       padding: 0.075rem 0.3rem; font-size: 0.8125em; }
+@media (max-width: 30rem) { dl { grid-template-columns: 1fr; gap: 0.25rem 0; }
+  dd { margin-bottom: 0.5rem; } }
