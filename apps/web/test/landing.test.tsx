@@ -74,14 +74,16 @@ describe('landing page', () => {
 
   it('every story section maps to a screen that exists', () => {
     mount(<Landing />);
-    // Scoped to the kicker element: "Evidence" is also the title of a mock
-    // panel further down, which is the point — the section and the screen it
-    // describes use the same word.
-    for (const kicker of ['Daily progress', 'Evidence', 'Verification',
-                          'Approvals', 'Issues', 'Management view', 'Audit trail']) {
-      const hits = screen.getAllByText(kicker).filter(
-        (el) => el.className.includes('lp-kicker'));
-      expect(hits, `${kicker} section missing`).toHaveLength(1);
+    // The kicker carries its number in a child element, so match on the
+    // kicker's text content rather than an exact text node.
+    const kickers = Array.from(document.querySelectorAll('.lp-kicker'))
+      .map((el) => el.textContent ?? '');
+    for (const [n, name] of [
+      ['01', 'Record progress'], ['02', 'Evidence'], ['03', 'Verification'],
+      ['04', 'Approvals'], ['05', 'Issues'], ['06', 'Accountability'],
+      ['07', 'Audit trail'], ['08', 'Management view'],
+    ]) {
+      expect(kickers, `${n} ${name} section missing`).toContain(`${n}${name}`);
     }
   });
 
@@ -100,7 +102,13 @@ describe('landing page', () => {
   it('the construction scene has six stages and an accessible description', () => {
     expect(STAGES).toHaveLength(6);
     expect(STAGES[0]!.at).toBe(0);
-    expect(STAGES[5]!.label).toBe('Complete');
+    expect(STAGES.map((s) => s.n)).toEqual(['01', '02', '03', '04', '05', '06']);
+    expect(STAGES[5]!.label).toBe('Handover');
+    // Monotonic thresholds: a stage that starts before the one above it would
+    // make the active-stage lookup pick the wrong entry.
+    for (let i = 1; i < STAGES.length; i++) {
+      expect(STAGES[i]!.at).toBeGreaterThan(STAGES[i - 1]!.at);
+    }
     render(<BuildingScene progress={0.5} />);
     // Screen readers get the progress as text; the SVG is not decorative.
     expect(screen.getByRole('img', { name: /50 percent/i })).toBeInTheDocument();
@@ -114,6 +122,53 @@ describe('landing page', () => {
       const { unmount } = render(<BuildingScene progress={p} />);
       expect(screen.getByRole('img')).toBeInTheDocument();
       unmount();
+    }
+  });
+
+  it('the header offers the navigation and both calls to action', () => {
+    mount(<Landing />);
+    for (const item of ['Product', 'Solutions', 'How it works', 'Resources']) {
+      expect(screen.getAllByRole('link', { name: item }).length,
+        `${item} missing from the header`).toBeGreaterThan(0);
+    }
+    expect(screen.getAllByRole('link', { name: /Get started/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Sign in' }).length).toBeGreaterThan(0);
+  });
+
+  it('every nav target is a real section on this page, not a dead route', () => {
+    mount(<Landing />);
+    const anchors = Array.from(document.querySelectorAll('a[href^="#"]'))
+      .map((a) => a.getAttribute('href')!.slice(1))
+      .filter((id) => id.length > 0);
+    for (const id of new Set(anchors)) {
+      expect(document.getElementById(id), `#${id} points at nothing`).not.toBeNull();
+    }
+  });
+
+  it('shows reported AND verified as two numbers — the C-3 rule', () => {
+    mount(<Landing />);
+    // An adjustment is a disagreement that is kept, never a correction that
+    // overwrites. Both labels must be present on the page.
+    // Scoped to the verification panel: "Verified" is also a portfolio column
+    // and a status chip, which is fine — the rule is about this panel showing
+    // both numbers side by side.
+    const vs = document.querySelector('.ui-vs')!;
+    expect(vs, 'the verification panel is missing').not.toBeNull();
+    expect(vs.textContent).toContain('Reported');
+    expect(vs.textContent).toContain('Verified');
+    expect(vs.textContent).toMatch(/12/);
+    expect(vs.textContent).toMatch(/9/);
+    expect(screen.getByText(/claim is kept as recorded/i)).toBeInTheDocument();
+  });
+
+  it('names no metric the MVP does not hold', () => {
+    mount(<Landing />);
+    const text = document.body.textContent ?? '';
+    // MVP_SCOPE §112: no schedule tile, and the no-money boundary removes the
+    // rest. A landing page promising these would be selling a different product.
+    for (const banned of ['budget', 'invoice', 'purchase order', 'stock',
+                          'inventory', 'schedule variance', 'headcount', 'payroll']) {
+      expect(text.toLowerCase(), `page mentions "${banned}"`).not.toContain(banned);
     }
   });
 

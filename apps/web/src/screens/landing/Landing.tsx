@@ -1,457 +1,411 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ArrowRight, Camera, CheckCircle2, ClipboardCheck, LayoutDashboard,
-  ScrollText, ShieldCheck, Stamp, TriangleAlert, WifiOff,
-} from 'lucide-react';
+import { ArrowRight, Menu, WifiOff, X } from 'lucide-react';
 import { Mark } from '../Login.js';
 import { BuildingScene, STAGES, useScrollProgress } from './BuildingScene.js';
-// Imported here, not in main.tsx, so Vite puts it in the lazy chunk and a
-// supervisor opening the app never downloads the marketing stylesheet.
+import { useReveal } from './reveal.js';
+import {
+  ApprovalPanel, AuditPanel, EvidencePanel, HeroPanel, IssuePanel,
+  PortfolioPanel, RecordPanel, VerifyPanel, WorkPanel,
+} from './panels.js';
 import '../../design/landing.css';
 
 /**
  * The public landing page.
  *
- * Written to be recognisable to someone who runs construction projects, not
- * to a general SaaS audience. Every claim on this page maps to a screen that
- * exists: the numbers in the mock panels are the ones the dashboard actually
- * computes, and the vocabulary — reported, verified, the gap between them —
- * is the product's own.
- *
- * No stock photography, no logo wall, no invented testimonials.
+ * Written for someone who runs construction projects, not for a general SaaS
+ * audience. Every claim maps to a screen that exists and uses the product's
+ * own vocabulary — reported versus verified, the acting capacity, the
+ * idempotency key. No stock photography, no logo wall, no invented customers
+ * or statistics, and no metric the MVP does not hold.
  */
 export function Landing() {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const progress = useScrollProgress(scrollRef);
-  const stage = [...STAGES].reverse().find((s) => progress >= s.at) ?? STAGES[0]!;
-
+  useReveal();
   return (
     <div className="lp">
-      <SiteHeader />
+      <Header />
+      <Hero />
+      <ConstructionStory />
+      <ProductStory />
+      <Offline />
+      <FinalCta />
+      <Footer />
+    </div>
+  );
+}
 
-      {/* ── Hero ──────────────────────────────────────────────── */}
-      <header className="lp-hero">
-        <div className="lp-wrap lp-hero-grid">
-          <div className="stack" style={{ gap: 'var(--s6)' }}>
+/* ══ Header ══════════════════════════════════════════════════ */
+
+const NAV = [
+  { label: 'Product', href: '#product' },
+  { label: 'Solutions', href: '#story' },
+  { label: 'How it works', href: '#record' },
+  { label: 'Resources', href: '#audit' },
+];
+
+function Header() {
+  const [scrolled, setScrolled] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    // One passive listener with a boolean gate: the class flips once at 8px
+    // rather than writing to the DOM on every frame of every scroll.
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
+
+  return (
+    <header className="lp-head" data-scrolled={scrolled}>
+      <div className="lp-wrap lp-head-in">
+        <a href="#top" className="lp-brand">
+          <Mark size={30} />
+          <span>Control Tower</span>
+        </a>
+
+        <nav className="lp-nav" aria-label="Sections">
+          {NAV.map((n) => <a key={n.label} href={n.href}>{n.label}</a>)}
+        </nav>
+
+        <div className="lp-head-cta">
+          <Link to="/login" className="lp-link">Sign in</Link>
+          <Link to="/login" className="btn btn-primary btn-sm">Get started</Link>
+        </div>
+
+        <button type="button" className="lp-burger" aria-expanded={open}
+                aria-label={open ? 'Close menu' : 'Open menu'}
+                onClick={() => setOpen((v) => !v)}>
+          {open ? <X size={20} aria-hidden /> : <Menu size={20} aria-hidden />}
+        </button>
+      </div>
+
+      {open ? (
+        <div className="lp-sheet">
+          <nav aria-label="Sections">
+            {NAV.map((n) => (
+              <a key={n.label} href={n.href} onClick={() => setOpen(false)}>{n.label}</a>
+            ))}
+          </nav>
+          <div className="lp-sheet-cta">
+            <Link to="/login" className="btn btn-block">Sign in</Link>
+            <Link to="/login" className="btn btn-primary btn-block">Get started</Link>
+          </div>
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+/* ══ Hero ════════════════════════════════════════════════════ */
+
+function Hero() {
+  return (
+    <section className="lp-hero" id="top">
+      <div className="lp-wrap">
+        <div className="lp-hero-grid">
+          <div className="lp-hero-copy" data-reveal>
             <span className="lp-eyebrow">
-              <span className="lp-dot" aria-hidden /> Construction project control
+              <span className="lp-eyebrow-dot" aria-hidden />
+              Construction project control
             </span>
             <h1 className="lp-h1">
-              Know what is happening on every site, what has actually been
-              <span className="lp-underline"> verified</span>, and what needs you.
+              Know what&#39;s happening on every site, what has actually been
+              <span className="lp-mark"> verified</span>, and what needs you.
             </h1>
             <p className="lp-lede">
-              Site teams record quantities where the work is, with photographs.
-              A second person verifies them. Everything else — approvals, issues,
-              the daily report, the audit trail — follows from that one habit.
+              Control Tower is one operational record of the work: the quantity,
+              the evidence behind it, the second person who confirmed it, the
+              approval, the issues it raised, and who did each of those — in
+              what capacity.
             </p>
-            <div className="row wrap" style={{ gap: 'var(--s3)' }}>
-              <Link to="/login" className="btn btn-primary lp-cta">
-                Sign in <ArrowRight size={17} aria-hidden />
+            <div className="lp-hero-cta">
+              <Link to="/login" className="btn btn-primary lp-btn-lg">
+                Get started <ArrowRight size={18} aria-hidden />
               </Link>
-              <a href="#how" className="btn lp-cta">See how it works</a>
+              <a href="#story" className="btn lp-btn-lg">See how it works</a>
             </div>
-            <p className="xs" style={{ maxWidth: '32rem' }}>
+            <p className="lp-hero-note">
               Works offline on site. Nothing is lost when the signal goes, and a
-              retry never becomes a duplicate entry.
+              retry never becomes a second entry.
             </p>
           </div>
 
-          <HeroPanel />
-        </div>
-      </header>
-
-      {/* ── Scroll-driven build ───────────────────────────────── */}
-      <section id="how" className="lp-scroll" ref={scrollRef} aria-labelledby="how-h">
-        <div className="lp-sticky">
-          <div className="lp-wrap lp-scroll-grid">
-            <div className="stack" style={{ gap: 'var(--s5)' }}>
-              <h2 id="how-h" className="lp-h2">A project, from cleared ground to handover</h2>
-              <p className="lp-body">
-                Every stage below produces the same three things: a quantity
-                somebody recorded, a photograph proving it, and a second person
-                who confirmed it. That is what the record is made of.
-              </p>
-              <ol className="lp-stages">
-                {STAGES.map((s) => {
-                  const active = stage.label === s.label;
-                  const passed = progress > s.at;
-                  return (
-                    <li key={s.label} data-active={active} data-passed={passed}>
-                      <span className="lp-stage-dot" aria-hidden />
-                      <span className="stack-2" style={{ gap: 0 }}>
-                        <strong>{s.label}</strong>
-                        <span className="xs">{s.caption}</span>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-
-            <figure className="lp-scene">
-              <BuildingScene progress={progress} />
-              <figcaption className="lp-scene-cap">
-                <span className="lp-progress" aria-hidden>
-                  <span style={{ width: `${Math.round(progress * 100)}%` }} />
-                </span>
-                <span className="xs num">{Math.round(progress * 100)}% · {stage.label}</span>
-              </figcaption>
-            </figure>
+          <div className="lp-hero-ui" data-reveal>
+            <HeroPanel />
           </div>
         </div>
-      </section>
-
-      {/* ── The story ─────────────────────────────────────────── */}
-      <Story
-        kicker="Daily progress"
-        icon={ClipboardCheck}
-        title="Recorded where the work is, in under a minute"
-        body="A supervisor picks the location and the work item — both remembered
-              from yesterday — types one quantity, and takes a photograph. Five
-              fields, four of them a tap. There is no percentage box anywhere:
-              “80% done” is an opinion, “412 of 515 sqm” is a fact."
-        panel={<ProgressPanel />}
-      />
-
-      <Story
-        reverse
-        kicker="Evidence"
-        icon={Camera}
-        title="Every claim carries its proof"
-        body="Photographs are captured in the app, stamped with the time, the
-              location and who took them — and, where GPS is unavailable inside a
-              concrete frame, the reason it is missing. Nothing is ever edited
-              after the fact; evidence is immutable at the database level."
-        panel={<EvidencePanel />}
-      />
-
-      <Story
-        kicker="Verification"
-        icon={ShieldCheck}
-        title="A second person confirms it, and never the same person"
-        body="Whoever recorded a quantity cannot verify it. The claim and the
-              confirmation are kept as two separate numbers, so an adjustment
-              never erases what site originally said — the gap between them is
-              the signal the whole product exists to surface."
-        panel={<VerifyPanel />}
-      />
-
-      <Story
-        reverse
-        kicker="Approvals"
-        icon={Stamp}
-        title="Decisions with a name and a capacity on them"
-        body="The daily report routes to whoever your workflow says, with an SLA.
-              Approvers can approve, reject, hold, or ask a question — and a
-              question keeps the clock running, because one that stops it is the
-              cheapest way to make a late item look on time."
-        panel={<ApprovalPanel />}
-      />
-
-      <Story
-        kicker="Issues"
-        icon={TriangleAlert}
-        title="Raised in 45 seconds, closed with proof"
-        body="Category and severity are chips, the location is one tap, the camera
-              opens directly. An issue cannot be resolved without a photograph of
-              the completed work, cannot be signed off by whoever fixed it, and
-              cannot close while a question about it is unanswered."
-        panel={<IssuePanel />}
-      />
-
-      <Story
-        reverse
-        kicker="Management view"
-        icon={LayoutDashboard}
-        title="Three questions, answered every morning"
-        body="What do I need to know, what needs my action, and what is going
-              wrong. Every number states what it counts, when it was computed and
-              where the rows behind it are — and the third band shows only what is
-              actually wrong, so an empty one means something."
-        panel={<DashboardPanel />}
-      />
-
-      <Story
-        kicker="Audit trail"
-        icon={ScrollText}
-        title="Who said this was done, and in what capacity"
-        body="Append-only, written in the same transaction as the change, and
-              readable as sentences rather than a JSON diff. Not just that Ramesh
-              approved it — that he approved it as Project Manager, which is the
-              answer an auditor is actually asking for."
-        panel={<AuditPanel />}
-      />
-
-      {/* ── Offline ───────────────────────────────────────────── */}
-      <section className="lp-band">
-        <div className="lp-wrap lp-offline">
-          <WifiOff size={26} aria-hidden />
-          <div className="stack-2">
-            <h2 className="lp-h3">The fifth floor of a concrete frame has no signal</h2>
-            <p className="lp-body">
-              So the app does not need one. Work is saved on the device the moment
-              it is recorded and sent when the phone next sees a network. Every
-              entry carries an idempotency key minted on the device, so a retry
-              after a timeout cannot become a second entry — verified against 500
-              operations across three devices with induced failures.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Final CTA ─────────────────────────────────────────── */}
-      <section className="lp-cta-band">
-        <div className="lp-wrap stack" style={{ gap: 'var(--s5)', alignItems: 'center', textAlign: 'center' }}>
-          <h2 className="lp-h2" style={{ color: '#fff' }}>
-            Start with one site and one supervisor
-          </h2>
-          <p className="lp-body" style={{ color: 'rgb(255 255 255 / 0.75)', maxWidth: '38rem' }}>
-            The product is built around one habit — record the quantity where the
-            work is, and have somebody else confirm it. Everything on this page
-            follows from that.
-          </p>
-          <div className="row wrap" style={{ gap: 'var(--s3)', justifyContent: 'center' }}>
-            <Link to="/login" className="btn lp-cta" style={{ background: '#fff', borderColor: '#fff' }}>
-              Sign in <ArrowRight size={17} aria-hidden />
-            </Link>
-            <Link to="/site/login" className="btn lp-cta lp-cta-ghost">
-              Sign in from site
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <footer className="lp-footer">
-        <div className="lp-wrap row-between wrap" style={{ gap: 'var(--s4)' }}>
-          <span className="row" style={{ gap: 'var(--s3)' }}>
-            <Mark size={28} />
-            <strong>Control Tower</strong>
-          </span>
-          <span className="xs">
-            Construction project control · offline-first · append-only audit
-          </span>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-/* ── Header ─────────────────────────────────────────────────── */
-function SiteHeader() {
-  return (
-    <div className="lp-header">
-      <div className="lp-wrap row-between">
-        <span className="row" style={{ gap: 'var(--s3)' }}>
-          <Mark size={32} />
-          <strong style={{ letterSpacing: 'var(--track-tight)' }}>Control Tower</strong>
-        </span>
-        <nav className="row" style={{ gap: 'var(--s2)' }} aria-label="Landing">
-          <a href="#how" className="btn btn-ghost btn-sm lp-nav-link">How it works</a>
-          <Link to="/login" className="btn btn-primary btn-sm">Sign in</Link>
-        </nav>
-      </div>
-    </div>
-  );
-}
-
-/* ── Panels ───────────────────────────────────────────────────
-   Compact renderings of real screens, built from the same tokens and
-   classes as the application. Not screenshots: an image would be stale
-   the first time a screen changed, and would not respond or scale. */
-
-function HeroPanel() {
-  return (
-    <div className="lp-panel lp-panel-hero" aria-hidden>
-      <div className="lp-panel-bar">
-        <span /><span /><span />
-        <span className="lp-panel-title">Tower B — Residential</span>
-      </div>
-      <div className="lp-panel-body">
-        <div className="lp-metrics">
-          {[
-            ['62%', 'verified progress', 'reported 71%'],
-            ['11%', 'not yet verified', '4 awaiting'],
-            ['3', 'approvals open', 'oldest 2 days'],
-            ['5', 'issues open', '1 critical'],
-          ].map(([v, l, s]) => (
-            <div key={l} className="lp-metric">
-              <strong>{v}</strong>
-              <span className="xs">{l}</span>
-              <span className="xs lp-metric-sub">{s}</span>
-            </div>
-          ))}
-        </div>
-        <div className="lp-panel-flags">
-          <span className="chip" style={{
-            background: 'var(--st-rejected-bg)', color: 'var(--st-rejected)',
-            borderColor: 'var(--st-rejected-br)' }}>
-            2 days with no report
-          </span>
-          <span className="chip" style={{
-            background: 'var(--st-progress-bg)', color: 'var(--st-progress)',
-            borderColor: 'var(--st-progress-br)' }}>
-            gap widened to 11%
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="lp-panel" aria-hidden>
-      <div className="lp-panel-bar"><span /><span /><span />
-        <span className="lp-panel-title">{title}</span></div>
-      <div className="lp-panel-body stack-2">{children}</div>
-    </div>
-  );
-}
-
-const Row = ({ a, b, c }: { a: string; b: string; c?: React.ReactNode }) => (
-  <div className="lp-row">
-    <span className="stack-2" style={{ gap: 0, minWidth: 0 }}>
-      <strong className="small truncate">{a}</strong>
-      <span className="xs truncate">{b}</span>
-    </span>
-    {c}
-  </div>
-);
-
-function ProgressPanel() {
-  return (
-    <Panel title="Progress entry">
-      <Row a="Flat 502 › Bathroom" b="Location · from recents" />
-      <Row a="Wall plaster 12mm" b="Work item · sqm" />
-      <div className="lp-qty">
-        <span className="num">12</span><span className="xs">sqm</span>
-      </div>
-      <div className="stack-2" style={{ gap: 'var(--s1)' }}>
-        <div className="bar">
-          <span className="bar-done" style={{ width: '58%' }} />
-          <span className="bar-pending" style={{ width: '24%' }} />
-        </div>
-        <span className="xs num">Planned 48 · done 30 → 42 · 62% → 87%</span>
-      </div>
-    </Panel>
-  );
-}
-
-function EvidencePanel() {
-  return (
-    <Panel title="Evidence">
-      <div className="thumb-grid">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="thumb" style={{ background: `var(--n-${150 + i * 50})` }} />
-        ))}
-        <div className="thumb-add"><Camera size={18} aria-hidden />ADD</div>
-      </div>
-      <span className="xs">07:41 · GPS recorded · as Site Supervisor</span>
-    </Panel>
-  );
-}
-
-function VerifyPanel() {
-  return (
-    <Panel title="Verification">
-      <Row a="Wall plaster 12mm" b="Floor 5 › Flat 502"
-           c={<span className="num small" style={{ textAlign: 'right' }}>
-                <strong>12</strong> <span className="xs">sqm</span>
-                <span className="xs" style={{ display: 'block', color: 'var(--st-progress)' }}>
-                  confirmed 9
-                </span>
-              </span>} />
-      <span className="xs">Measured 9 sqm on site, not 12 — Anita Desai as Site Engineer</span>
-      <div className="row wrap" style={{ gap: 'var(--s2)' }}>
-        <span className="chip" style={{ background: 'var(--st-verified-bg)', color: 'var(--st-verified)', borderColor: 'var(--st-verified-br)' }}>Accept</span>
-        <span className="chip" style={{ background: 'var(--st-progress-bg)', color: 'var(--st-progress)', borderColor: 'var(--st-progress-br)' }}>Adjust</span>
-        <span className="chip" style={{ background: 'var(--st-rejected-bg)', color: 'var(--st-rejected)', borderColor: 'var(--st-rejected-br)' }}>Reject</span>
-      </div>
-    </Panel>
-  );
-}
-
-function ApprovalPanel() {
-  return (
-    <Panel title="Approvals">
-      <Row a="Daily report · TWR" b="Ramesh Kumar as Site Supervisor"
-           c={<span className="xs num" style={{ color: 'var(--destructive)', fontWeight: 600 }}>2 days · late</span>} />
-      <Row a="Issue closure · critical" b="Anita Desai as Site Engineer"
-           c={<span className="xs num">4h</span>} />
-      <span className="xs">Sorted by ageing — the oldest is the one that matters</span>
-    </Panel>
-  );
-}
-
-function IssuePanel() {
-  return (
-    <Panel title="Issue">
-      <Row a="Honeycombing on column C4" b="Floor 5 › Flat 502"
-           c={<span className="chip" style={{ background: 'var(--sev-high-bg)', color: 'var(--sev-high)', borderColor: 'var(--sev-high-br)' }}>High</span>} />
-      <span className="xs">Attach a photo of the completed work before resolving this issue.</span>
-      <Row a="Cracked tile in Flat 204" b="Resolved · awaiting a verifier"
-           c={<span className="chip" style={{ background: 'var(--st-resolved-bg)', color: 'var(--st-resolved)', borderColor: 'var(--st-resolved-br)' }}>Resolved</span>} />
-    </Panel>
-  );
-}
-
-function DashboardPanel() {
-  return (
-    <Panel title="Project dashboard">
-      <span className="label">What is going wrong</span>
-      {[
-        ['3 of the last 14 site days have no submitted report.', 'bad'],
-        ['11% of reported quantity has not been verified.', 'warn'],
-        ['2 issues are past their due date.', 'bad'],
-      ].map(([msg, tone]) => (
-        <div key={msg} className={tone === 'bad' ? 'banner banner-bad' : 'banner banner-warn'}
-             style={{ padding: 'var(--s2) var(--s3)', fontSize: 'var(--text-sm)' }}>
-          <TriangleAlert size={15} aria-hidden style={{ flex: 'none', marginTop: 2 }} />
-          <span>{msg}</span>
-        </div>
-      ))}
-    </Panel>
-  );
-}
-
-function AuditPanel() {
-  return (
-    <Panel title="Record timeline">
-      {[
-        ['09:12', 'Ramesh Kumar as Site Supervisor recorded 12 sqm.'],
-        ['11:40', 'Anita Desai as Site Engineer changed the quantity to 9.'],
-        ['17:05', 'Vikram Shah as Project Manager approved the day.'],
-      ].map(([t, line]) => (
-        <div key={t} className="row" style={{ gap: 'var(--s3)', alignItems: 'baseline' }}>
-          <span className="xs num" style={{ flex: 'none' }}>{t}</span>
-          <span className="small">{line}</span>
-        </div>
-      ))}
-      <span className="row xs" style={{ gap: 'var(--s2)' }}>
-        <CheckCircle2 size={13} aria-hidden style={{ color: 'var(--st-verified)' }} />
-        Append-only. Nothing here can be edited or removed.
-      </span>
-    </Panel>
-  );
-}
-
-/* ── Story section ────────────────────────────────────────────── */
-function Story({ kicker, icon: Icon, title, body, panel, reverse }: {
-  kicker: string; icon: typeof Camera; title: string; body: string;
-  panel: React.ReactNode; reverse?: boolean;
-}) {
-  return (
-    <section className="lp-story">
-      <div className={`lp-wrap lp-story-grid${reverse ? ' lp-story-reverse' : ''}`}>
-        <div className="stack" style={{ gap: 'var(--s4)' }}>
-          <span className="lp-kicker"><Icon size={15} aria-hidden /> {kicker}</span>
-          <h2 className="lp-h2">{title}</h2>
-          <p className="lp-body">{body}</p>
-        </div>
-        <div className="lp-story-panel">{panel}</div>
       </div>
     </section>
+  );
+}
+
+/* ══ Construction story ══════════════════════════════════════
+   The scene is a full-bleed pinned layer with the stage list overlaid on
+   it — not a figure inside a two-column grid, which is what made it small
+   and left the page half empty. */
+
+function ConstructionStory() {
+  const ref = useRef<HTMLDivElement>(null);
+  const p = useScrollProgress(ref);
+  const active = [...STAGES].reverse().find((s) => p >= s.at) ?? STAGES[0]!;
+
+  return (
+    <section className="lp-story" id="story" ref={ref} aria-labelledby="story-h">
+      <div className="lp-pin">
+        <div className="lp-scene">
+          <BuildingScene progress={p} />
+        </div>
+
+        <div className="lp-scene-top lp-wrap">
+          <h2 id="story-h" className="lp-h2 lp-scene-h">
+            A project, from cleared ground to handover
+          </h2>
+          <p className="lp-scene-sub">
+            Every stage produces the same three things: a quantity somebody
+            recorded, a photograph proving it, and a second person who
+            confirmed it.
+          </p>
+        </div>
+
+        <ol className="lp-stages" aria-label="Construction stages">
+          {STAGES.map((s) => {
+            const state = active.n === s.n ? 'on' : p > s.at ? 'past' : 'next';
+            return (
+              <li key={s.n} data-state={state}>
+                <span className="lp-stage-n">{s.n}</span>
+                <span className="lp-stage-t">
+                  <strong>{s.label}</strong>
+                  <span>{s.caption}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+
+        <div className="lp-rail" aria-hidden>
+          <span style={{ transform: `scaleX(${p})` }} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ══ Product story ═══════════════════════════════════════════ */
+
+interface Sec {
+  id: string; n: string; kicker: string; title: React.ReactNode;
+  body: string; panel: React.ReactNode; flip?: boolean; wide?: boolean;
+}
+
+const SECTIONS: Sec[] = [
+  {
+    id: 'record', n: '01', kicker: 'Record progress',
+    title: <>Know what work<br />actually happened.</>,
+    body: 'A supervisor picks the location and the work item — both remembered '
+      + 'from yesterday — types one quantity and takes a photograph. Five fields, '
+      + 'four of them a tap. There is no percentage box anywhere: “80% done” is an '
+      + 'opinion, “412 of 515 sqm” is a fact.',
+    panel: <RecordPanel />,
+  },
+  {
+    id: 'evidence', n: '02', kicker: 'Evidence', flip: true,
+    title: <>Every claim<br />carries its proof.</>,
+    body: 'Photographs are captured in the app and stamped with the time, the '
+      + 'location and who took them — and, where GPS is unavailable inside a '
+      + 'concrete frame, the reason it is missing. Evidence is immutable at the '
+      + 'database level, not by convention.',
+    panel: <EvidencePanel />,
+  },
+  {
+    id: 'verify', n: '03', kicker: 'Verification',
+    title: <>A second person confirms it,<br />and never the same person.</>,
+    body: 'Whoever recorded a quantity cannot verify it. The claim and the '
+      + 'confirmation are kept as two separate numbers, so an adjustment never '
+      + 'erases what site originally said — the gap between them is the signal '
+      + 'the whole product exists to surface.',
+    panel: <VerifyPanel />,
+  },
+  {
+    id: 'approve', n: '04', kicker: 'Approvals', flip: true,
+    title: <>Decisions with a name<br />and a capacity on them.</>,
+    body: 'The daily report routes to whoever your workflow says, with an SLA. '
+      + 'Approvers can approve, reject, hold, or ask a question — and a question '
+      + 'keeps the ageing clock running, because one that stops it is the cheapest '
+      + 'way to make a late item look on time.',
+    panel: <ApprovalPanel />,
+  },
+  {
+    id: 'issues', n: '05', kicker: 'Issues',
+    title: <>Raised in 45 seconds,<br />closed with proof.</>,
+    body: 'Category and severity are chips, the location is one tap, the camera '
+      + 'opens directly. An issue cannot be resolved without a photograph of the '
+      + 'completed work, cannot be signed off by whoever fixed it, and cannot close '
+      + 'while a question about it is unanswered.',
+    panel: <IssuePanel />,
+  },
+  {
+    id: 'work', n: '06', kicker: 'Accountability', flip: true,
+    title: <>Three questions,<br />answered every morning.</>,
+    body: 'What do I need to know, what needs my action, and what is going wrong. '
+      + 'Work addressed to a person arrives in one list ordered by what is late — '
+      + 'approvals, tasks, unanswered questions and issues together, because '
+      + 'somebody with four inboxes checks none of them.',
+    panel: <WorkPanel />,
+  },
+];
+
+function ProductStory() {
+  return (
+    <div id="product">
+      {SECTIONS.map((s) => (
+        <section key={s.id} id={s.id} className="lp-sec" data-flip={s.flip}>
+          <div className="lp-wrap lp-sec-grid">
+            <div className="lp-sec-copy" data-reveal>
+              <span className="lp-kicker"><i>{s.n}</i>{s.kicker}</span>
+              <h2 className="lp-h2">{s.title}</h2>
+              <p className="lp-body">{s.body}</p>
+            </div>
+            <div className="lp-sec-ui" data-reveal>{s.panel}</div>
+          </div>
+        </section>
+      ))}
+
+      {/* Audit gets the full width: a timeline reads across, not down a
+          half-column, and this is the section that has to feel trustworthy. */}
+      <section id="audit" className="lp-sec lp-sec-wide">
+        <div className="lp-wrap">
+          <div className="lp-wide-head" data-reveal>
+            <span className="lp-kicker"><i>07</i>Audit trail</span>
+            <h2 className="lp-h2 lp-h2-center">
+              Who said this was done, and in what capacity?
+            </h2>
+            <p className="lp-body lp-body-center">
+              Append-only, written in the same transaction as the change, and
+              readable as sentences rather than a JSON diff. Not just that Vikram
+              approved it — that he approved it <em>as Project Manager</em>, which
+              is the question an auditor is actually asking.
+            </p>
+          </div>
+          <div className="lp-wide-ui" data-reveal><AuditPanel /></div>
+        </div>
+      </section>
+
+      <section className="lp-sec lp-sec-alt">
+        <div className="lp-wrap lp-sec-grid" data-flip="true">
+          <div className="lp-sec-copy" data-reveal>
+            <span className="lp-kicker"><i>08</i>Management view</span>
+            <h2 className="lp-h2">One row per project,<br />and the flags in words.</h2>
+            <p className="lp-body">
+              Verified progress over planned, the gap still awaiting a verifier,
+              open approvals and their oldest age, issues past their date, and
+              site days with no report. Every number states what it counts, when
+              it was computed, and where the rows behind it are.
+            </p>
+          </div>
+          <div className="lp-sec-ui" data-reveal><PortfolioPanel /></div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* ══ Offline ═════════════════════════════════════════════════ */
+
+function Offline() {
+  return (
+    <section className="lp-band">
+      <div className="lp-wrap lp-band-in" data-reveal>
+        <span className="lp-band-icon" aria-hidden><WifiOff size={22} /></span>
+        <div>
+          <h2 className="lp-h3">The fifth floor of a concrete frame has no signal.</h2>
+          <p className="lp-body">
+            So the app does not need one. Work is saved on the device the moment
+            it is recorded and sent when the phone next sees a network. Every
+            entry carries an idempotency key minted on the device, so a retry
+            after a timeout cannot become a second entry — verified against 500
+            operations across three devices with induced failures.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ══ Final CTA ═══════════════════════════════════════════════ */
+
+function FinalCta() {
+  return (
+    <section className="lp-cta">
+      <div className="lp-wrap lp-cta-in" data-reveal>
+        <h2 className="lp-h2 lp-cta-h">Start with one site<br />and see the difference.</h2>
+        <p className="lp-cta-p">
+          The product is built around one habit — record the quantity where the
+          work is, and have somebody else confirm it. Everything on this page
+          follows from that.
+        </p>
+        <div className="lp-cta-row">
+          <Link to="/login" className="btn lp-btn-lg lp-btn-light">
+            Get started <ArrowRight size={18} aria-hidden />
+          </Link>
+          <Link to="/site/login" className="btn lp-btn-lg lp-btn-onDark">
+            Sign in from site
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ══ Footer ══════════════════════════════════════════════════ */
+
+const FOOTER = [
+  ['Product', [['Record progress', '#record'], ['Evidence', '#evidence'],
+               ['Verification', '#verify'], ['Approvals', '#approve']]],
+  ['Solutions', [['Issues', '#issues'], ['Accountability', '#work'],
+                 ['Management view', '#product'], ['Offline site work', '#story']]],
+  ['Resources', [['How it works', '#story'], ['Audit trail', '#audit']]],
+  ['Company', [['Sign in', '/login'], ['Sign in from site', '/site/login']]],
+] as const;
+
+function Footer() {
+  return (
+    <footer className="lp-foot">
+      <div className="lp-wrap">
+        <div className="lp-foot-grid">
+          <div className="lp-foot-brand">
+            <span className="lp-brand lp-brand-dark">
+              <Mark size={30} /><span>Control Tower</span>
+            </span>
+            <p>Construction project control. Offline-first, evidence-backed,
+               append-only.</p>
+          </div>
+          {FOOTER.map(([heading, links]) => (
+            <nav key={heading} aria-label={heading}>
+              <h3>{heading}</h3>
+              <ul>
+                {links.map(([label, href]) => (
+                  <li key={label}>
+                    {href.startsWith('#')
+                      ? <a href={href}>{label}</a>
+                      : <Link to={href}>{label}</Link>}
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
+        </div>
+        <div className="lp-foot-base">
+          <span>Control Tower</span>
+          <span>Every quantity recorded where the work is, and confirmed by
+                somebody else.</span>
+        </div>
+      </div>
+    </footer>
   );
 }

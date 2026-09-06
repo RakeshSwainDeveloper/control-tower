@@ -9,10 +9,12 @@ import { test, expect } from './fixtures.js';
  * building rather than an empty frame.
  */
 const WIDTHS = [
-  { name: 'mobile',  width: 390,  height: 844 },
-  { name: 'tablet',  width: 834,  height: 1112 },
-  { name: 'laptop',  width: 1366, height: 768 },
-  { name: 'desktop', width: 1920, height: 1080 },
+  { name: 'phone-390',  width: 390,  height: 844 },
+  { name: 'phone-430',  width: 430,  height: 932 },
+  { name: 'tablet-768', width: 768,  height: 1024 },
+  { name: 'laptop-1024', width: 1024, height: 768 },
+  { name: 'desktop-1440', width: 1440, height: 900 },
+  { name: 'wide-1920',  width: 1920, height: 1080 },
 ];
 
 test.describe('landing page', () => {
@@ -75,10 +77,8 @@ test.describe('landing page', () => {
     expect(end).toBeGreaterThan(mid);
     expect(end).toBeGreaterThan(60);
 
-    // And the stage list keeps up with it. Scoped to the caption, which is
-    // the one place the current stage is named — "Complete" also appears in
-    // the stage list and in the scene's own label.
-    await expect(page.locator('.lp-scene-cap')).toContainText('Complete');
+    // And the stage list keeps up: the active stage is the last one.
+    await expect(page.locator('.lp-stages li[data-state="on"]')).toContainText('Handover');
   });
 
   test('reduced motion shows the finished building, not an empty frame', async ({ browser }) => {
@@ -98,5 +98,66 @@ test.describe('landing page', () => {
     await page.getByRole('link', { name: /^Sign in/ }).first().click();
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByLabel('Email')).toBeVisible();
+  });
+
+  /**
+   * §14: "should not leave massive blank areas between content."
+   *
+   * The old pinned section was 400vh with a small figure inside a two-column
+   * grid, so most of a 1440px viewport was white. This measures the actual
+   * painted area of the pinned frame rather than trusting that it looks right.
+   */
+  test('the construction scene fills its viewport rather than leaving it empty', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    const pin = page.locator('.lp-pin');
+    await pin.scrollIntoViewIfNeeded();
+
+    const box = await page.locator('.scene-svg').boundingBox();
+    const vp = page.viewportSize()!;
+    expect(box, 'the scene did not render').not.toBeNull();
+    // The building must occupy most of the pinned viewport, not a corner of it.
+    expect(box!.width / vp.width, `scene is ${Math.round(box!.width)}px of ${vp.width}px`)
+      .toBeGreaterThan(0.6);
+    expect(box!.height / vp.height, `scene is ${Math.round(box!.height)}px of ${vp.height}px`)
+      .toBeGreaterThan(0.55);
+  });
+
+  test('the header is thin, sticky, and changes on scroll', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    const head = page.locator('.lp-head');
+    expect((await head.boundingBox())!.height).toBeLessThanOrEqual(72);
+    await expect(head).toHaveAttribute('data-scrolled', 'false');
+    await page.evaluate(() => window.scrollBy(0, 400));
+    await page.waitForTimeout(300);
+    // Sticky: still at the top of the viewport after scrolling.
+    expect((await head.boundingBox())!.y).toBeLessThanOrEqual(1);
+    await expect(head).toHaveAttribute('data-scrolled', 'true');
+  });
+
+  test('the mobile menu opens, navigates and closes', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    // The desktop nav is hidden; the burger is the way in.
+    await expect(page.locator('.lp-nav')).toBeHidden();
+    await page.getByRole('button', { name: 'Open menu' }).click();
+    const sheet = page.locator('.lp-sheet');
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole('link', { name: 'How it works' }).click();
+    await expect(sheet).toBeHidden();
+  });
+
+  test('scroll reveal shows content and never hides it again', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    const first = page.locator('[data-reveal]').first();
+    await expect(first).toHaveAttribute('data-shown', 'true');
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(500);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(300);
+    // Scrolling back up must not re-hide anything.
+    await expect(first).toHaveAttribute('data-shown', 'true');
   });
 });
