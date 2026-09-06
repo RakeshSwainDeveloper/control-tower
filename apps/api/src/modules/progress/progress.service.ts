@@ -393,13 +393,19 @@ export class ProgressService {
         .innerJoin('app.work_items as w', 'w.id', 'p.work_item_id')
         .innerJoin('app.units as u', 'u.id', 'p.unit_id')
         .leftJoin('app.location_paths as lp', 'lp.location_id', 'p.location_id')
+        // The people, by name. A verifier is being asked to accept or reject
+        // somebody's claim; '01a07460-cc58…' makes that judgement impossible,
+        // and the responsibility label alone does not say WHO.
+        .leftJoin('app.users as ru', 'ru.id', 'p.reported_by')
+        .leftJoin('app.users as vu', 'vu.id', 'p.verified_by')
         .select(['p.id', 'p.reported_qty', 'p.verified_qty', 'p.verification_status',
                  'p.executed_on', 'p.reported_at', 'p.reported_by',
                  'p.reported_responsibility', 'p.verified_by', 'p.verified_responsibility',
                  'p.verification_reason', 'p.contractor_label', 'p.note',
                  'p.is_over_execution', 'p.daily_report_id',
                  'w.code as work_item_code', 'w.description as work_item',
-                 'u.code as unit', 'lp.display_path as location'])
+                 'u.code as unit', 'lp.display_path as location',
+                 'ru.name as reported_by_name', 'vu.name as verified_by_name'])
         .orderBy('p.id', 'desc')
         .limit(opts.limit + 1)
         .where('p.project_id', '=', projectId);

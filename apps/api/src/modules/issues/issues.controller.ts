@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Post, Query, ParseUUIDPipe } from '@nestj
 import { ZodValidationPipe } from '../../common/zod-validation.pipe.js';
 import { CurrentUser } from '../auth/public.decorator.js';
 import type { AuthenticatedUser } from '../auth/auth.guard.js';
-import { RequirePermission } from '../access/permission.decorator.js';
+import { RequirePermission, NoPermissionRequired } from '../access/permission.decorator.js';
 import { IssuesService, type IssueActor } from './issues.service.js';
 import { ActionsService } from './actions.service.js';
 import {
@@ -199,11 +199,12 @@ export class IssuesController {
    * person's own inbox from them after a role change, which is the one place
    * that must never happen.
    */
+  @NoPermissionRequired()
   @Get('me/work')
   myWork(
     @CurrentUser() u: AuthenticatedUser,
     @Query(new ZodValidationPipe(myWorkSchema)) q: never,
   ) {
-    return this.actions.myWork(actorOf(u), q);
+    return this.actions.myWork(actorOf(u), q).then((data) => ({ data }));
   }
 }

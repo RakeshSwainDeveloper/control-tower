@@ -30,9 +30,14 @@ down: ## Stop everything, keep volumes
 restart: ## Restart a service:  make restart s=api
 	$(DC) restart $(s)
 
-reset: ## DESTRUCTIVE: stop, drop volumes, rebuild, re-migrate
+reset: ## DESTRUCTIVE: stop, drop volumes, rebuild, re-migrate, re-seed
 	$(DC) down -v --remove-orphans
 	$(DC) up -d --build --renew-anon-volumes --wait api web worker
+	# The demo tenant is part of a working environment, not an optional extra:
+	# the HTTP contract suite calls the API the way a browser does and needs a
+	# tenant to sign in as. A reset that leaves none makes that suite red for a
+	# reason that has nothing to do with the code.
+	@$(MAKE) --no-print-directory seed
 	@$(MAKE) --no-print-directory urls
 
 build: ## Rebuild images without starting
@@ -60,18 +65,13 @@ seed: ## Load the demo tenant
 	$(DC) exec api pnpm --filter @ct/api seed
 
 test: ## Run all tests inside Docker
-	# Scoped to the workspaces that HAVE tests, and run where their deps live.
-	# `pnpm -r test` reached into apps/web, whose node_modules is an anonymous
-	# volume owned by the web container — vitest is not on PATH from here, so the
-	# gate went red for a reason that had nothing to do with the code. When the
-	# web app grows tests in Phase 7 they run in the web container, below.
+	# Each workspace runs where its dependencies live. `pnpm -r test` from the
+	# api container reached into apps/web, whose node_modules is an anonymous
+	# volume owned by the web container, so vitest was not on PATH and the gate
+	# went red for a reason that had nothing to do with the code.
 	$(DC) exec -T api sh -c "cd /app/packages/contracts && pnpm test"
 	$(DC) exec -T api sh -c "cd /app/apps/api && pnpm test"
-	@if $(DC) exec -T web sh -c "ls /app/apps/web/src/**/*.test.* /app/apps/web/test 2>/dev/null" >/dev/null 2>&1; then \
-		$(DC) exec -T web sh -c "cd /app/apps/web && pnpm test"; \
-	else \
-		echo "  (apps/web has no tests yet — Phase 7)"; \
-	fi
+	$(DC) exec -T web sh -c "cd /app/apps/web && pnpm test"
 
 test-iso: ## Cross-tenant isolation suite only (CI gate)
 	$(DC) exec api pnpm --filter @ct/api test -- isolation
@@ -79,6 +79,7 @@ test-iso: ## Cross-tenant isolation suite only (CI gate)
 typecheck: ## Typecheck every package (a real gate: 0 errors expected)
 	$(DC) exec -T api sh -c "cd /app/apps/api && pnpm exec tsc -p tsconfig.json --noEmit"
 	$(DC) exec -T api sh -c "cd /app/packages/contracts && pnpm exec tsc -p tsconfig.json --noEmit"
+	$(DC) exec -T web sh -c "cd /app/apps/web && pnpm exec tsc --noEmit"
 
 verify: ## Everything CI would run: typecheck + all tests
 	@$(MAKE) --no-print-directory typecheck

@@ -188,7 +188,7 @@ describe('offline sync — adversarial', () => {
     const bad = item('malformed');
     await svc.ingest(actor, [bad]);
     const q = await svc.needsAttention(actor);
-    const found = q.items.find((i) => i.client_uuid === bad.client_uuid);
+    const found = q.data.find((i) => i.client_uuid === bad.client_uuid);
     expect(found, 'rejected item vanished instead of reaching needs-attention').toBeDefined();
     expect(found!.reason).toMatch(/kept so you can fix it/i);
     expect((found!.payload as { mode: string }).mode).toBe('malformed');
@@ -199,7 +199,7 @@ describe('offline sync — adversarial', () => {
     const { results } = await svc.ingest(actor, [boom]);
     expect(results[0]!.status).toBe('rejected');
     const q = await svc.needsAttention(actor);
-    expect(q.items.some((i) => i.client_uuid === boom.client_uuid)).toBe(true);
+    expect(q.data.some((i) => i.client_uuid === boom.client_uuid)).toBe(true);
   });
 
   it('POLICY reject_to_attention: an edit to a locked record is refused, not applied', async () => {
@@ -209,7 +209,7 @@ describe('offline sync — adversarial', () => {
     expect(results[0]!.conflict!.policy).toBe('reject_to_attention');
     expect(results[0]!.conflict!.kept_both).toBe(false);
     const q = await svc.needsAttention(actor);
-    expect(q.items.some((i) => i.client_uuid === locked.client_uuid)).toBe(true);
+    expect(q.data.some((i) => i.client_uuid === locked.client_uuid)).toBe(true);
   });
 
   it('POLICY keep_both_and_flag: neither author is silently overwritten', async () => {
@@ -227,7 +227,7 @@ describe('offline sync — adversarial', () => {
     expect(results[0]!.status).toBe('rejected');
     expect(results[0]!.reason).toMatch(/does not accept/i);
     const q = await svc.needsAttention(actor);
-    expect(q.items.some((i) => i.client_uuid === future.client_uuid)).toBe(true);
+    expect(q.data.some((i) => i.client_uuid === future.client_uuid)).toBe(true);
   });
 
   it('resolving an attention item clears it from the queue', async () => {
@@ -235,7 +235,7 @@ describe('offline sync — adversarial', () => {
     await svc.ingest(actor, [bad]);
     expect(await svc.resolveAttention(actor, bad.client_uuid)).toEqual({ resolved: true });
     const q = await svc.needsAttention(actor);
-    expect(q.items.some((i) => i.client_uuid === bad.client_uuid)).toBe(false);
+    expect(q.data.some((i) => i.client_uuid === bad.client_uuid)).toBe(false);
   });
 
   it('refuses an oversized batch rather than half-processing it', async () => {

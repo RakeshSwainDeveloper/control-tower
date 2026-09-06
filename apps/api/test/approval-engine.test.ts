@@ -140,6 +140,40 @@ describe('approval engine — structural guarantees', () => {
     expect(q.slice(0, 1200)).not.toMatch(/sla_due_at:\s*null/);
   });
 
+  it('BR-21 is WHOLE: the engine writes the outcome back to the object', () => {
+    // It updated its own instance row and returned `object_state: 'approved'`
+    // without ever writing it. An approved daily report stayed `submitted` for
+    // ever, so the trail and the record disagreed permanently — and the trail
+    // is what nobody looks at until an audit.
+    expect(ENGINE).toMatch(/private async stampObject\(/);
+    // Both decision paths, not just the happy one.
+    const approvePath = ENGINE.slice(ENGINE.indexOf("instance_status: 'approved'") - 400,
+                                     ENGINE.indexOf("instance_status: 'approved'"));
+    expect(approvePath, 'approval does not stamp the object').toMatch(/stampObject\(/);
+    const rejectIdx = ENGINE.indexOf("outcome = { instance_status: 'rejected'");
+    expect(ENGINE.slice(rejectIdx - 300, rejectIdx),
+           'rejection does not stamp the object').toMatch(/stampObject\(/);
+  });
+
+  it('an object type the engine cannot stamp is LOGGED, never thrown', () => {
+    // The decision is real and already recorded by the time we get here.
+    // Losing it to a rollback would be worse than a stale flag on the record.
+    const fn = ENGINE.slice(ENGINE.indexOf('private async stampObject('));
+    const body = fn.slice(0, fn.indexOf('\n  }'));
+    expect(body).toMatch(/this\.log\.warn\(/);
+    expect(body).not.toMatch(/throw new/);
+  });
+
+  it('an APPROVED issue closure does not close the issue behind issues.close()', () => {
+    // The open-query guard and the verified-before-closed rule live there. An
+    // engine that closed the issue itself would route around both.
+    const fn = ENGINE.slice(ENGINE.indexOf('private async stampObject('));
+    const body = fn.slice(0, fn.indexOf('\n  }'));
+    const issueBranch = body.slice(body.indexOf("issue_closure"));
+    expect(issueBranch).toMatch(/state === 'rejected'/);
+    expect(issueBranch).not.toMatch(/state_class: 'closed'/);
+  });
+
   it('the engine, not the caller, decides who the approvers are', () => {
     expect(ENGINE).toMatch(/resolveApprovers/);
     // Sibling tasks must be withdrawn when a decision is taken, or a

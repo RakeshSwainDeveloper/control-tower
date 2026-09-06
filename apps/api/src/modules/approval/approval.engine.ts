@@ -366,6 +366,7 @@ export class ApprovalEngine {
               status: 'rejected', state_class: 'rejected', completed_at: new Date(),
             }).where('id', '=', instance.id).execute();
             await this.withdrawSiblingTasks(trx, instance.id, step.id);
+            await this.stampObject(trx, instance.object_type, instance.object_id, 'rejected');
             outcome = { instance_status: 'rejected', object_state: 'rejected' };
             break;
 
@@ -449,8 +450,54 @@ export class ApprovalEngine {
       status: 'approved', state_class: 'approved', completed_at: new Date(),
     }).where('id', '=', instanceId).execute();
 
+    await this.stampObject(trx, input.objectType, input.objectId, 'approved');
     return { instance_status: 'approved', object_state: 'approved' };
   }
+  /**
+   * Write the outcome back onto the object itself.
+   *
+   * BR-21 gives the engine sole authority to set an approved state class. Until
+   * Phase 7 it exercised that authority only on its own instance row and
+   * reported `object_state: 'approved'` without ever writing it — so an
+   * approved daily report stayed `submitted` for ever, and the trail and the
+   * record disagreed permanently.
+   *
+   * Keyed by object_type here rather than delegated back to each module, for
+   * the same reason the SoD checks live here: a rule every future module has to
+   * remember is a rule that will eventually be forgotten. An unknown type is
+   * logged, not thrown — the decision is real and already recorded, and losing
+   * it to a rollback would be worse than a stale flag on the record.
+   */
+  private async stampObject(
+    trx: Transaction<DB>, objectType: string, objectId: string,
+    state: 'approved' | 'rejected',
+  ): Promise<void> {
+    if (objectType === 'daily_report') {
+      await trx.updateTable('app.daily_reports')
+        .set({ state_class: state })
+        .where('id', '=', objectId).execute();
+      return;
+    }
+    if (objectType === 'issue_closure') {
+      // A rejected closure sends the issue back to whoever resolved it. An
+      // APPROVED one deliberately does NOT close the issue here: issues.close()
+      // still applies the open-query guard and the verified-before-closed rule,
+      // and the engine must not route around either.
+      if (state === 'rejected') {
+        await trx.updateTable('app.issues')
+          .set({ state_class: 'in_progress' })
+          .where('id', '=', objectId).execute();
+      }
+      return;
+    }
+    this.log.warn(
+      { objectType, objectId, state },
+      'approval completed for an object type the engine cannot stamp — the ' +
+      'decision is recorded but the record still shows its previous state',
+    );
+  }
+
+
 
   private async withdrawSiblingTasks(
     trx: Transaction<DB>, instanceId: string, exceptStepId: string,
@@ -478,6 +525,11 @@ export class ApprovalEngine {
         .leftJoin('app.projects as p', 'p.id', 'i.project_id')
         .leftJoin('app.users as u', 'u.id', 'i.submitted_by')
         .select(['t.id as task_id', 't.assigned_at', 't.sla_due_at',
+                 // The project id, not just its name: S-M13 renders the OBJECT
+                 // on one page with no navigation, and every object endpoint on
+                 // this API is project-scoped. Without it the inbox row names
+                 // something the approver cannot open.
+                 't.project_id',
                  'i.id as instance_id', 'i.object_type', 'i.object_id', 'i.status',
                  'i.submitted_at', 'i.submitted_responsibility',
                  's.step_no', 's.name as step_name',
@@ -500,11 +552,15 @@ export class ApprovalEngine {
         overdue: !!r.sla_due_at && new Date(r.sla_due_at).getTime() < now,
       }));
 
+      // `data`, not `items` — every list on this API uses the same word.
+      // The three summary numbers stay: S-W06 requires the OLDEST AGE to be
+      // prominent, and a client that has to compute it from the rows will
+      // eventually compute it differently from the dashboard.
       return {
         count: items.length,
         oldest_age_hours: items.length ? items[0]!.age_hours : 0,
         overdue: items.filter((i) => i.overdue).length,
-        items,
+        data: items,
       };
     });
   }

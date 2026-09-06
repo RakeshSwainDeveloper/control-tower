@@ -5,6 +5,7 @@ import { sql, type Kysely, type Transaction } from 'kysely';
 import { withTenant, type DB } from '@ct/db';
 import { DB_TOKEN } from '../../common/tokens.js';
 import { AuditService } from '../../common/audit.service.js';
+import { ApprovalEngine } from '../approval/approval.engine.js';
 import { PermissionService } from '../access/permission.service.js';
 import { assertVisible } from '../access/scoped-query.js';
 import type { ProgressActor } from './progress.service.js';
@@ -14,6 +15,7 @@ export class DailyReportService {
   constructor(
     @Inject(DB_TOKEN) private readonly db: Kysely<DB>,
     private readonly audit: AuditService,
+    private readonly approval: ApprovalEngine,
     private readonly permissions: PermissionService,
   ) {}
 
@@ -236,7 +238,51 @@ export class DailyReportService {
           responsibilityLabel: grant?.responsibilityLabel ?? null,
         });
 
-        return { ...after, entries_locked: entries.length };
+        /**
+         * Hand it to the approval engine.
+         *
+         * Wired in Phase 7. Phase 6 wired issue closure and missed this one,
+         * which made the whole approval half of the product unreachable: the
+         * daily report is the object an approver actually sees, once per site
+         * per day, and without this call the inbox was empty for ever.
+         *
+         * `submitted` is where this service stops. Only the engine sets an
+         * approved state class (BR-21), and if no workflow is configured it
+         * refuses loudly rather than auto-approving (BR-22) — so a tenant that
+         * has not configured one is told, and the report simply stays
+         * submitted rather than silently becoming approved.
+         */
+        let approval: { required: boolean; instance_id?: string; reason?: string };
+        try {
+          const instance = await this.approval.submitInTrx(
+            trx,
+            {
+              userId: actor.userId, orgId: actor.orgId,
+              grantId: grant?.grantId, responsibility: grant?.responsibilityLabel,
+            },
+            {
+              objectType: 'daily_report', objectId: reportId, projectId,
+              // SoD-01 is evaluated against the SUBMITTER: a supervisor must
+              // not end up approving their own day.
+              createdBy: actor.userId,
+              context: { report_number: number, entries: entries.length,
+                         report_date: report.report_date },
+            },
+          );
+          approval = { required: true, instance_id: instance.id };
+        } catch (e) {
+          // A tenant with no workflow configured is a configuration gap, not a
+          // failed submission. The day's work is recorded and locked either
+          // way; refusing the whole submission would punish the supervisor for
+          // something only a company admin can fix.
+          if (e instanceof BadRequestException) {
+            approval = { required: false, reason: (e as Error).message };
+          } else {
+            throw e;
+          }
+        }
+
+        return { ...after, entries_locked: entries.length, approval };
       },
     );
   }

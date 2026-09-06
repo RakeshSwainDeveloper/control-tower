@@ -1,0 +1,174 @@
+/* ============================================================================
+   Component classes. One stylesheet rather than per-component CSS modules:
+   30 screens share five components, and the value is that they look identical
+   everywhere, which co-located styles quietly erode.
+   ========================================================================= */
+
+/* ── Surfaces ─────────────────────────────────────────────────── */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+.card-p { padding: var(--s5); }
+.stack   { display: flex; flex-direction: column; gap: var(--s4); }
+.stack-2 { display: flex; flex-direction: column; gap: var(--s2); }
+.row     { display: flex; align-items: center; gap: var(--s3); }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.wrap    { flex-wrap: wrap; }
+.grow    { flex: 1 1 auto; min-width: 0; }
+.muted   { color: var(--muted-fg); }
+.small   { font-size: var(--text-sm); }
+.xs      { font-size: var(--text-xs); }
+.num     { font-variant-numeric: tabular-nums; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--s2);
+  min-height: var(--touch-office);
+  padding: 0 var(--s4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r);
+  background: var(--card); color: var(--fg);
+  font-size: var(--text-base); font-weight: 500;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) { background: var(--bg); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary  { background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
+.btn-primary:hover:not(:disabled)  { background: #1e293b; }
+.btn-accent   { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn-accent:hover:not(:disabled)   { background: #075985; }
+.btn-danger   { background: var(--card); border-color: var(--destructive); color: var(--destructive); }
+.btn-danger:hover:not(:disabled)   { background: var(--st-rejected-bg); }
+.btn-ghost    { background: transparent; border-color: transparent; }
+.btn-ghost:hover:not(:disabled)    { background: var(--bg); }
+.btn-sm  { min-height: 30px; padding: 0 var(--s3); font-size: var(--text-sm); }
+.btn-block { width: 100%; }
+
+/* Site surface: nothing tappable goes below 48px, ever. */
+.site .btn { min-height: var(--touch); padding: 0 var(--s5); font-size: var(--text-md); }
+.site .btn-sm { min-height: var(--touch); }
+
+/* ── Chips ────────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex; align-items: center; gap: var(--s1);
+  padding: 2px var(--s2); border-radius: var(--r-full);
+  font-size: var(--text-xs); font-weight: 600;
+  letter-spacing: 0.01em; white-space: nowrap;
+}
+/* Selectable chips replace dropdowns on the site surface (UI_UX_PLAN §3.5). */
+.chip-select {
+  min-height: var(--touch); padding: 0 var(--s4);
+  border: 1px solid var(--border-strong); border-radius: var(--r-full);
+  background: var(--card); font-size: var(--text-base); font-weight: 500;
+  transition: all var(--dur) var(--ease);
+}
+.chip-select[aria-pressed="true"] {
+  background: var(--primary); border-color: var(--primary); color: var(--primary-fg);
+}
+
+/* ── Fields ───────────────────────────────────────────────────── */
+.field { display: flex; flex-direction: column; gap: var(--s2); }
+.label {
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted-fg);
+}
+.input, .select, .textarea {
+  width: 100%; min-height: var(--touch-office);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--border-strong); border-radius: var(--r);
+  background: var(--card);
+  transition: border-color var(--dur) var(--ease);
+}
+.input:focus, .select:focus, .textarea:focus { border-color: var(--accent); }
+.textarea { min-height: 5rem; resize: vertical; }
+.site .input, .site .select, .site .textarea { min-height: var(--touch); font-size: var(--text-md); }
+
+/* The quantity field on S-M03. Large because it is read at arm's length in
+   sunlight, and because a mistyped quantity is the most expensive error in
+   the product. */
+.input-qty {
+  font-size: var(--text-num); font-weight: 600; text-align: right;
+  min-height: 4rem; padding-right: var(--s4);
+}
+.hint  { font-size: var(--text-sm); color: var(--muted-fg); }
+.error { font-size: var(--text-sm); color: var(--destructive); font-weight: 500; }
+
+/* ── Lists & tables ───────────────────────────────────────────── */
+.table { width: 100%; border-collapse: collapse; font-size: var(--text-base); }
+.table th {
+  text-align: left; font-size: var(--text-xs); font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-fg);
+  padding: var(--s2) var(--s3); border-bottom: 1px solid var(--border);
+  white-space: nowrap; background: var(--card);
+  position: sticky; top: 0; z-index: 1;
+}
+.table td { padding: var(--s3); border-bottom: 1px solid var(--border); vertical-align: top; }
+.table tbody tr:hover { background: var(--bg); }
+.table .n { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* The site surface never gets a table. Rows are cards with a 48px hit area. */
+.list-row {
+  display: flex; align-items: center; gap: var(--s3);
+  width: 100%; min-height: var(--touch);
+  padding: var(--s3) var(--s4);
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); text-align: left;
+  transition: border-color var(--dur) var(--ease);
+}
+.list-row:hover { border-color: var(--border-strong); }
+
+/* ── Feedback ─────────────────────────────────────────────────── */
+.empty {
+  display: flex; flex-direction: column; align-items: center; gap: var(--s3);
+  padding: var(--s10) var(--s5); text-align: center; color: var(--muted-fg);
+}
+.banner {
+  display: flex; gap: var(--s3); align-items: flex-start;
+  padding: var(--s3) var(--s4); border-radius: var(--r);
+  border: 1px solid var(--border); background: var(--card);
+  font-size: var(--text-base);
+}
+.banner-warn { background: var(--st-progress-bg); border-color: #fcd34d; color: #78350f; }
+.banner-bad  { background: var(--st-rejected-bg); border-color: #fca5a5; color: #7f1d1d; }
+.banner-ok   { background: var(--st-approved-bg); border-color: #86efac; color: #14532d; }
+
+/* Offline is a badge, never an error dialog (UI_UX_PLAN §3.5). */
+.sync-badge {
+  display: inline-flex; align-items: center; gap: var(--s2);
+  padding: var(--s1) var(--s3); border-radius: var(--r-full);
+  font-size: var(--text-xs); font-weight: 600;
+  background: var(--st-draft-bg); color: var(--st-draft);
+}
+.sync-badge[data-state="offline"] { background: var(--st-progress-bg); color: var(--st-progress); }
+.sync-badge[data-state="syncing"] { background: var(--st-submitted-bg); color: var(--st-submitted); }
+.sync-badge[data-state="attention"] { background: var(--st-rejected-bg); color: var(--st-rejected); }
+
+.spinner {
+  width: 1em; height: 1em; border-radius: 50%; flex: none;
+  border: 2px solid currentColor; border-right-color: transparent;
+  animation: spin 700ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Evidence ─────────────────────────────────────────────────── */
+.thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: var(--s2); }
+.thumb {
+  position: relative; aspect-ratio: 1; border-radius: var(--r);
+  overflow: hidden; background: var(--st-draft-bg); border: 1px solid var(--border);
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.thumb-add {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--s1); aspect-ratio: 1; min-height: var(--touch);
+  border: 2px dashed var(--border-strong); border-radius: var(--r);
+  background: var(--card); color: var(--muted-fg); font-size: var(--text-xs); font-weight: 600;
+}
+
+/* ── Progress bar — displayed, never typed (FR-142) ───────────── */
+.bar { height: 8px; border-radius: var(--r-full); background: var(--border); overflow: hidden; display: flex; }
+.bar-done    { background: var(--st-verified); }
+.bar-pending { background: var(--st-progress); }

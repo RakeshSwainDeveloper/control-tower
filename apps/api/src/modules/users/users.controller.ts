@@ -54,10 +54,18 @@ export class UsersController {
   }
 
   // ── Roles ───────────────────────────────────────────────────────
+  /**
+   * Enveloped as `{ data }`, like every other list on this API.
+   *
+   * It returned a bare array until Phase 7, when the first client to consume it
+   * silently rendered an empty role picker — and an empty role picker means
+   * nobody can be granted anything. One endpoint shaped differently from the
+   * other twenty is a trap for every client that will ever be written.
+   */
   @Get('roles')
   @RequirePermission('org.role.read')
-  listRoles(@CurrentUser() u: AuthenticatedUser) {
-    return this.users.listRoles(actorOf(u));
+  async listRoles(@CurrentUser() u: AuthenticatedUser) {
+    return { data: await this.users.listRoles(actorOf(u)) };
   }
 
   @Post('roles')
@@ -90,8 +98,8 @@ export class UsersController {
   // ── Grants ──────────────────────────────────────────────────────
   @Get('grants')
   @RequirePermission('org.grant.manage', 'org.user.read')
-  listGrants(@CurrentUser() u: AuthenticatedUser, @Query('user_id') userId?: string) {
-    return this.users.listGrants(actorOf(u), userId);
+  async listGrants(@CurrentUser() u: AuthenticatedUser, @Query('user_id') userId?: string) {
+    return { data: await this.users.listGrants(actorOf(u), userId) };
   }
 
   @Post('grants')

@@ -290,7 +290,7 @@ describe('PT-1 · 500 offline operations, 3 devices, induced failures', () => {
   it('NOTHING WAS DISCARDED — every failure is recoverable from needs-attention', async () => {
     const actor: SyncActor = { userId, orgId, deviceId: 'pt1-device-0' };
     const q = await svc.needsAttention(actor, 500);
-    const recoverable = new Set(q.items.map((i) => i.client_uuid));
+    const recoverable = new Set(q.data.map((i) => i.client_uuid));
 
     // Rejections and locked-record conflicts must all be recoverable.
     const shouldRecover = plans.filter(
@@ -300,7 +300,7 @@ describe('PT-1 · 500 offline operations, 3 devices, induced failures', () => {
     expect(lost, `unrecoverable operations: ${lost.length}`).toEqual([]);
 
     // And each carries its payload back, so the user corrects rather than re-enters.
-    for (const i of q.items.slice(0, 20)) {
+    for (const i of q.data.slice(0, 20)) {
       expect(i.payload, 'a needs-attention item lost its payload').toBeTruthy();
       expect((i.payload as { mode?: string }).mode).toBeTruthy();
     }

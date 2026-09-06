@@ -248,7 +248,10 @@ export class SyncService {
         .execute();
       return {
         count: rows.length,
-        items: rows.map((r) => ({
+        // `data`, not `items`: this was the one list on the API using a
+        // different word, and a client reading `.data` off it saw nothing —
+        // silently, which is the worst way for a needs-attention queue to fail.
+        data: rows.map((r) => ({
           client_uuid: r.client_uuid,
           entity: r.entity_type,
           op: r.operation,

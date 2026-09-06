@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AccessModule } from '../access/access.module.js';
 import { ApprovalEngine } from './approval.engine.js';
+import { ApprovalConfigService } from './approval-config.service.js';
 import { ApprovalController } from './approval.controller.js';
 
 /**
@@ -14,7 +15,7 @@ import { ApprovalController } from './approval.controller.js';
 @Module({
   imports: [AccessModule],
   controllers: [ApprovalController],
-  providers: [ApprovalEngine],
-  exports: [ApprovalEngine],
+  providers: [ApprovalEngine, ApprovalConfigService],
+  exports: [ApprovalEngine, ApprovalConfigService],
 })
 export class ApprovalModule {}

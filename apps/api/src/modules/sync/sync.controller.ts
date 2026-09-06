@@ -93,11 +93,11 @@ export class SyncController {
 
   @Get('conflicts')
   @RequirePermission('report.list.read')
-  conflicts(
+  async conflicts(
     @CurrentUser() u: AuthenticatedUser,
     @Req() req: FastifyRequest,
     @Query('project_id') projectId?: string,
   ) {
-    return this.sync.conflicts(this.actor(u, req), projectId);
+    return { data: await this.sync.conflicts(this.actor(u, req), projectId) };
   }
 }

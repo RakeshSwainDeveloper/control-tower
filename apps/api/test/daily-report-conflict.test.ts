@@ -229,6 +229,6 @@ describe('daily report · keep_both_and_flag', () => {
 
     // And it is recoverable, not lost.
     const q = await svc.needsAttention(suresh);
-    expect(q.items.some((i) => i.client_uuid === late.client_uuid)).toBe(true);
+    expect(q.data.some((i) => i.client_uuid === late.client_uuid)).toBe(true);
   });
 });

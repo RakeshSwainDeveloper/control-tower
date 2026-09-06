@@ -1,0 +1,92 @@
+/* ============================================================================
+   Control Tower — design tokens
+   Source: STACK_AND_DOCKER_PLAN.md §6 (design-system skill, second run,
+   "Accessible & Ethical"), with the deviations recorded there.
+
+   Light-first and light-only for this release. Site users work outdoors in
+   sunlight; UI_UX_PLAN.md §3.5 puts dark mode in P2. There is deliberately no
+   prefers-color-scheme block — a half-tested dark theme on a phone held up to
+   a concrete slab at noon is worse than no dark theme.
+   ========================================================================= */
+
+:root {
+  color-scheme: light;
+
+  /* ── Palette ─────────────────────────────────────────────────── */
+  --primary:        #0f172a;   /* slate-900 */
+  --primary-fg:     #ffffff;
+  --accent:         #0369a1;   /* sky-700  */
+  --accent-fg:      #ffffff;
+  --accent-weak:    #e0f2fe;
+  --bg:             #f8fafc;
+  --card:           #ffffff;
+  --border:         #e2e8f0;
+  --border-strong:  #cbd5e1;
+  --fg:             #020617;
+  --muted-fg:       #475569;   /* 4.6:1 on --bg */
+  --destructive:    #dc2626;
+
+  /* ── Semantic status, driven by state_class and NEVER by label ──
+     MVP_DATABASE_SCOPE §4: a tenant renames "Verified" to "Checked" and the
+     colour must not move. These map to state_class, not to status.label. */
+  --st-draft:       #64748b;  --st-draft-bg:      #f1f5f9;
+  --st-submitted:   #0369a1;  --st-submitted-bg:  #e0f2fe;
+  --st-review:      #7c3aed;  --st-review-bg:     #f3e8ff;
+  --st-approval:    #7c3aed;  --st-approval-bg:   #f3e8ff;
+  --st-approved:    #15803d;  --st-approved-bg:   #dcfce7;
+  --st-rejected:    #b91c1c;  --st-rejected-bg:   #fee2e2;
+  --st-progress:    #b45309;  --st-progress-bg:   #fef3c7;
+  --st-resolved:    #0369a1;  --st-resolved-bg:   #e0f2fe;
+  --st-verified:    #15803d;  --st-verified-bg:   #dcfce7;
+  --st-closed:      #475569;  --st-closed-bg:     #f1f5f9;
+  --st-cancelled:   #64748b;  --st-cancelled-bg:  #f1f5f9;
+  --st-hold:        #b45309;  --st-hold-bg:       #fef3c7;
+  --st-void:        #94a3b8;  --st-void-bg:       #f8fafc;
+
+  /* Severity — issues only. Deliberately NOT reused for state. */
+  --sev-low:        #475569;  --sev-low-bg:       #f1f5f9;
+  --sev-medium:     #b45309;  --sev-medium-bg:    #fef3c7;
+  --sev-high:       #c2410c;  --sev-high-bg:      #ffedd5;
+  --sev-critical:   #b91c1c;  --sev-critical-bg:  #fee2e2;
+
+  /* ── Type ───────────────────────────────────────────────────────
+     Inter, not Fira Sans: better at 14px in dense tables, and first-class
+     tabular numerals, which every quantity column needs. Loaded as a system
+     stack — no webfont request, because the first paint happens on 4G. */
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  --text-xs:   0.75rem;    /* 12px — metadata only, never a label a site user must read */
+  --text-sm:   0.8125rem;  /* 13px */
+  --text-base: 0.9375rem;  /* 15px */
+  --text-md:   1rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.375rem;
+  --text-2xl:  1.75rem;
+  --text-num:  2rem;       /* the quantity on S-M03 */
+
+  /* ── Space & shape ──────────────────────────────────────────── */
+  --s1: 0.25rem;  --s2: 0.5rem;   --s3: 0.75rem;  --s4: 1rem;
+  --s5: 1.25rem;  --s6: 1.5rem;   --s8: 2rem;     --s10: 2.5rem;
+  --r-sm: 0.375rem; --r: 0.5rem;  --r-lg: 0.75rem; --r-full: 999px;
+
+  --shadow-sm: 0 1px 2px rgb(2 6 23 / 0.06);
+  --shadow:    0 1px 3px rgb(2 6 23 / 0.10), 0 1px 2px rgb(2 6 23 / 0.06);
+  --shadow-lg: 0 10px 25px rgb(2 6 23 / 0.12);
+
+  /* ── Touch ──────────────────────────────────────────────────────
+     48px, not the skill's 44. Gloves and wet hands (UI_UX_PLAN §3.5).
+     The office surface may go to 36 for dense tables; the site surface
+     may not go below 48 anywhere. */
+  --touch: 48px;
+  --touch-office: 36px;
+
+  --dur: 180ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur: 0ms; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

@@ -55,8 +55,22 @@ export class ProgressController {
 
   @Get('projects/:id/progress/summary')
   @RequirePermission('field.progress.read')
-  summary(@CurrentUser() u: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.progress.summary(actorOf(u), id);
+  /**
+   * FR-522: an aggregate states what it counts, when it was computed, and where
+   * the rows behind it are. It returned a bare array until Phase 7 — a number
+   * on a dashboard with no definition is a rumour with a font.
+   */
+  async summary(@CurrentUser() u: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return {
+      metric: 'work_item_progress',
+      as_of: new Date().toISOString(),
+      definition:
+        'Per work item: planned quantity, quantity reported by site, and ' +
+        'quantity confirmed by a verifier. Percentages are derived from these ' +
+        'three numbers and are never entered.',
+      data: await this.progress.summary(actorOf(u), id),
+      drill: { endpoint: `/api/v1/projects/${id}/progress`, params: {} },
+    };
   }
 
   /** FR-146: the gap is a headline metric, with its definition and drill query. */

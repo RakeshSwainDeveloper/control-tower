@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { withTenant } from '@ct/db';
-import type { Kysely } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import type { DB } from '@ct/db';
 import { AppModule } from '../app.module.js';
 import { DB_TOKEN } from '../common/tokens.js';
@@ -91,13 +91,23 @@ async function main(): Promise<void> {
 
   await db.updateTable('app.organizations').set({ status: 'active' }).where('id', '=', orgId).execute();
 
-  // A placeholder project id so project-scoped grants are real. The projects
-  // table arrives in Phase 3; the grant shape is already correct.
-  const demoProjectId = '00000000-0000-7000-8000-00000000dead';
   const passwordHash = await crypto.hashPassword(DEMO_PASSWORD);
 
-  const created = await withTenant(db, { orgId }, async (trx) => {
-    const out: Array<{ key: string; id: string; login: string }> = [];
+  /**
+   * Users, then a REAL project, then the grants that point at it.
+   *
+   * Until Phase 7 this seeded project-scoped grants against a hardcoded
+   * placeholder id — correct when written, because the projects table did not
+   * exist until Phase 3, and never revisited afterwards. The result was a demo
+   * tenant whose project manager held 34 permissions on a project that was not
+   * there: /projects returned nothing, and the entire site surface could not be
+   * opened, demonstrated or tested end to end.
+   *
+   * The ordering is forced by the schema — a project needs an accountable
+   * manager — so the people come first.
+   */
+  const seeded = await withTenant(db, { orgId }, async (trx) => {
+    const users: Array<{ key: string; id: string; login: string; role: string; scope: string }> = [];
     for (const p of PEOPLE) {
       const user = await trx.insertInto('app.users').values({
         org_id: orgId,
@@ -109,34 +119,136 @@ async function main(): Promise<void> {
         status: 'active',
       }).returning(['id']).executeTakeFirstOrThrow();
 
-      await trx.insertInto('app.role_grants').values({
-        org_id: orgId,
-        user_id: user.id,
-        role_id: roleIds[p.role]!,
-        scope_type: p.scope,
-        scope_id: p.scope === 'org' ? null : demoProjectId,
-        responsibility_label:
-          { company_admin: 'Company Admin', management: 'Management',
-            project_manager: 'Project Manager', site_engineer: 'Site Engineer',
-            site_supervisor: 'Site Supervisor' }[p.role]!,
-        granted_by: user.id,
-      }).execute();
-
       await audit.write(trx, orgId, {
         entityType: 'user', entityId: user.id, action: 'create',
         context: { seeded: true, role: p.role, scope: p.scope },
         source: 'system', responsibilityLabel: 'Platform Provisioning',
       });
 
-      out.push({ key: p.key, id: user.id, login: p.email ?? p.phone! });
+      users.push({ key: p.key, id: user.id, login: p.email ?? p.phone!, role: p.role, scope: p.scope });
     }
-    return out;
+
+    const pm = users.find((u) => u.key === 'pm')!;
+    const admin = users.find((u) => u.key === 'admin')!;
+
+    const project = await trx.insertInto('app.projects').values({
+      org_id: orgId, company_id: companyId,
+      code: 'TWR', name: 'Tower B — Residential',
+      description: 'Demo project: 8 floors, 4 flats per floor.',
+      accountable_manager_user_id: pm.id,
+      commercial_owner_user_id: pm.id,
+      // state_class, not a status label: the label is tenant-configurable and
+      // the semantics are not (MVP_DATABASE_SCOPE §4).
+      state_class: 'in_progress',
+      created_by: admin.id,
+    }).returning(['id']).executeTakeFirstOrThrow();
+
+    for (const u of users) {
+      await trx.insertInto('app.role_grants').values({
+        org_id: orgId,
+        user_id: u.id,
+        role_id: roleIds[u.role]!,
+        scope_type: u.scope as 'org',
+        scope_id: u.scope === 'org' ? null : project.id,
+        responsibility_label:
+          { company_admin: 'Company Admin', management: 'Management',
+            project_manager: 'Project Manager', site_engineer: 'Site Engineer',
+            site_supervisor: 'Site Supervisor' }[u.role]!,
+        granted_by: admin.id,
+      }).execute();
+    }
+
+    // A location tree a supervisor would recognise: floors, then flats, then
+    // rooms. Three levels, because that is where a picker starts to hurt and a
+    // two-level demo hides the problem.
+    for (let f = 1; f <= 8; f++) {
+      const floor = await trx.insertInto('app.locations').values({
+        org_id: orgId, project_id: project.id, parent_id: null,
+        code: `L${f}`, name: `Floor ${f}`, level_name: 'Floor',
+        sort_order: f, path: sql`''::ltree` as never, created_by: admin.id,
+      }).returning(['id']).executeTakeFirstOrThrow();
+
+      for (let flat = 1; flat <= 4; flat++) {
+        const no = f * 100 + flat;
+        const unit = await trx.insertInto('app.locations').values({
+          org_id: orgId, project_id: project.id, parent_id: floor.id,
+          code: `F${no}`, name: `Flat ${no}`, level_name: 'Flat',
+          sort_order: flat, path: sql`''::ltree` as never, created_by: admin.id,
+        }).returning(['id']).executeTakeFirstOrThrow();
+
+        for (const [i, room] of ['Living', 'Bedroom', 'Kitchen', 'Bathroom'].entries()) {
+          await trx.insertInto('app.locations').values({
+            org_id: orgId, project_id: project.id, parent_id: unit.id,
+            code: `F${no}-${room.slice(0, 3).toUpperCase()}`, name: room, level_name: 'Room',
+            sort_order: i, path: sql`''::ltree` as never, created_by: admin.id,
+          }).execute();
+        }
+      }
+    }
+
+    const units = await trx.selectFrom('app.units').select(['id', 'code']).execute();
+    const unitId = (code: string) => units.find((u) => u.code === code)?.id ?? units[0]!.id;
+
+    const WORK = [
+      ['WI-BLK', 'Blockwork 200mm', 'sqm', '3200'],
+      ['WI-PLI', 'Internal wall plaster 12mm', 'sqm', '5400'],
+      ['WI-PLE', 'External wall plaster 15mm', 'sqm', '2100'],
+      ['WI-TIL', 'Floor tiling 600x600', 'sqm', '1850'],
+      ['WI-PNT', 'Internal painting — 2 coats', 'sqm', '5400'],
+      ['WI-ELE', 'Electrical conduiting', 'm', '4200'],
+      ['WI-PLM', 'Plumbing rough-in', 'm', '1600'],
+    ] as const;
+
+    for (const [code, description, unit, qty] of WORK) {
+      await trx.insertInto('app.work_items').values({
+        org_id: orgId, project_id: project.id,
+        code, description, unit_id: unitId(unit),
+        planned_qty: qty, is_active: true, created_by: admin.id,
+      }).execute();
+    }
+
+    /**
+     * An approval workflow for the daily report.
+     *
+     * Without one, BR-22 refuses every submission and the approval half of the
+     * product is unreachable — which is exactly the state the demo tenant was
+     * in until Phase 7. `MVP_IMPLEMENTATION_PLAN.md` lists "seeded default
+     * configuration" as an MVP deliverable; this is part of it.
+     */
+    const def = await trx.insertInto('app.approval_definitions').values({
+      org_id: orgId, object_type: 'daily_report', scope_type: 'org', scope_id: null,
+      name: 'Daily report sign-off', is_active: true, created_by: admin.id,
+    }).returning(['id']).executeTakeFirstOrThrow();
+
+    await trx.insertInto('app.approval_versions').values({
+      org_id: orgId, definition_id: def.id, version_no: 1,
+      spec: JSON.stringify([
+        { step_no: 1, name: 'Project Manager approval',
+          resolver: 'project_manager', sla_hours: 24 },
+      ]),
+      activated_by: admin.id,
+    }).execute();
+
+    await audit.write(trx, orgId, {
+      entityType: 'project', entityId: project.id, action: 'create',
+      projectId: project.id,
+      context: { seeded: true, locations: 168, work_items: WORK.length },
+      source: 'system', responsibilityLabel: 'Platform Provisioning',
+    });
+
+    return { users, projectId: project.id, workItems: WORK.length };
   });
 
+  console.log(`  ✔ project       TWR · Tower B — Residential  ${seeded.projectId}`);
+  console.log('  ✔ locations     168 (8 floors · 4 flats each · 4 rooms each)');
+  console.log(`  ✔ work items    ${seeded.workItems}`);
+
   console.log('\n  Users:');
-  for (const u of created) console.log(`    ${u.key.padEnd(11)} ${u.login.padEnd(22)} ${u.id}`);
-  console.log(`\n  Password for email logins: ${DEMO_PASSWORD}`);
-  console.log(`  Supervisor logs in by phone + OTP (dev code is echoed).\n`);
+  for (const u of seeded.users) console.log(`    ${u.key.padEnd(11)} ${u.login.padEnd(22)} ${u.id}`);
+  console.log(`\n  Tenant email logins: ${DEMO_PASSWORD}`);
+  console.log('  Supervisor signs in by phone + OTP (the dev code is echoed).');
+  console.log('  Platform admin uses PLATFORM_BOOTSTRAP_EMAIL / _PASSWORD from .env,');
+  console.log('  NOT the tenant password above.\n');
 
   await app.close();
 }

@@ -77,25 +77,25 @@ export class ProjectsController {
 
   @Get('projects/:id/members')
   @RequirePermission('project.project.read')
-  members(@CurrentUser() u: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.projects.members(actorOf(u), id);
+  async members(@CurrentUser() u: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return { data: await this.projects.members(actorOf(u), id) };
   }
 
   // ── Locations ───────────────────────────────────────────────────
   @Get('projects/:id/locations')
   @RequirePermission('project.location.read')
-  tree(@CurrentUser() u: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.locations.tree(actorOf(u), id);
+  async tree(@CurrentUser() u: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return { data: await this.locations.tree(actorOf(u), id) };
   }
 
   @Get('projects/:id/locations/:locationId/subtree')
   @RequirePermission('project.location.read')
-  subtree(
+  async subtree(
     @CurrentUser() u: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Param('locationId', ParseUUIDPipe) locationId: string,
   ) {
-    return this.locations.subtree(actorOf(u), id, locationId);
+    return { data: await this.locations.subtree(actorOf(u), id, locationId) };
   }
 
   @Post('projects/:id/locations')
