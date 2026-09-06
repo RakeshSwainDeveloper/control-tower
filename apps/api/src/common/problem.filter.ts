@@ -42,6 +42,29 @@ export class ProblemDetailFilter implements ExceptionFilter {
       title = 'Separation of Duty';
       type = `https://controltower.dev/problems/sod/${exception.rule}`;
       detail = exception.message;
+    } else if (isTriggerRule(exception)) {
+      /**
+       * A business rule enforced by a database trigger.
+       *
+       * Twelve rules in this schema are enforced with `RAISE EXCEPTION … USING
+       * ERRCODE = 'check_violation'`, and every message is written for the
+       * person who will read it: "This issue has 1 unanswered question(s).
+       * Answer them before closing it."
+       *
+       * Until Phase 7 all twelve surfaced as a bare 500 with no detail. The
+       * rule fired correctly and the user was told nothing — which is worse
+       * than the rule not existing, because they cannot even work out what to
+       * fix.
+       *
+       * The discriminator is `constraint`: a genuine column CHECK carries the
+       * constraint name and a message written for a DBA, while a trigger's
+       * RAISE carries none and a message written for a person. Only the second
+       * is ever shown.
+       */
+      status = HttpStatus.CONFLICT;
+      title = 'Cannot do that yet';
+      type = 'https://controltower.dev/problems/business-rule';
+      detail = (exception as { message: string }).message;
     } else if (exception instanceof MissingTenantContextError) {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       title = 'Internal Server Error';
@@ -84,4 +107,18 @@ export class ProblemDetailFilter implements ExceptionFilter {
 
     void res.status(status).type('application/problem+json').send(problem);
   }
+}
+
+/**
+ * A Postgres error raised by one of our own triggers, rather than by a column
+ * constraint. `code` 23514 is check_violation; a real CHECK sets `constraint`,
+ * a `RAISE EXCEPTION` does not.
+ */
+function isTriggerRule(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false;
+  const err = e as { code?: unknown; constraint?: unknown; message?: unknown };
+  return err.code === '23514'
+    && !err.constraint
+    && typeof err.message === 'string'
+    && err.message.length > 0;
 }

@@ -169,6 +169,98 @@ describe('HTTP contract', () => {
     expect(body).toHaveProperty('modules');
   });
 
+  it('reference data a supervisor needs is readable without a permission', async () => {
+    // Six issue categories are provisioned for every tenant and had no read
+    // endpoint at all until Phase 7 — S-M10's category chips would have been
+    // empty and issues could only ever be filed uncategorised.
+    const { status, body } = await get('/master-data?kind=issue_category');
+    expect(status).toBe(200);
+    const rows = (body as { data: { code: string }[] }).data;
+    expect(rows.length).toBeGreaterThanOrEqual(4);
+    expect(rows.map((r) => r.code)).toContain('safety');
+  });
+
+  it('statuses carry BOTH the label and the state class it means', async () => {
+    // The client colours by state_class and prints label (MVP_DATABASE_SCOPE
+    // §4). Sending one without the other forces it to guess.
+    const { body } = await get('/statuses?entity_type=issue');
+    const rows = (body as { data: { label: string; state_class: string }[] }).data;
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      expect(r.label, 'a status with no label').toBeTruthy();
+      expect(r.state_class, `${r.label} has no state class`).toBeTruthy();
+    }
+  });
+
+  /**
+   * Wave 7's endpoints. All three were missing entirely — the dashboard,
+   * portfolio and audit screens had nothing to render.
+   */
+  it('the dashboard returns three bands, every metric with a definition', async () => {
+    const projects = await get('/projects?limit=1');
+    const pid = (projects.body as { data: { id: string }[] }).data[0]!.id;
+    const { status, body } = await get(`/projects/${pid}/dashboard`);
+    expect(status).toBe(200);
+    const d = body as { know: { key: string; definition: string; drill: unknown }[];
+                        act: object; wrong: unknown[] };
+    expect(d.know.length).toBeGreaterThanOrEqual(4);
+    for (const m of d.know) {
+      // FR-522 — a number a reader cannot trace to rows is a rumour with a font.
+      expect(m.definition, `${m.key} has no definition`).toBeTruthy();
+      expect(m.drill, `${m.key} has no drill target`).toBeTruthy();
+    }
+    expect(d.act).toBeTruthy();
+    expect(Array.isArray(d.wrong)).toBe(true);
+  });
+
+  it('the portfolio is ONE query, not one per project', async () => {
+    const { status, body } = await get('/portfolio');
+    expect(status).toBe(200);
+    const p = body as { definition: string; data: { code: string; verified_pct: number }[] };
+    expect(p.definition).toBeTruthy();
+    expect(Array.isArray(p.data)).toBe(true);
+  });
+
+  it('the audit timeline renders sentences, not JSON', async () => {
+    const list = await get('/audit?limit=1');
+    const row = (list.body as { data: { entity_type: string; entity_id: string }[] }).data[0];
+    if (!row) return;
+    const { status, body } = await get(`/audit/${row.entity_type}/${row.entity_id}`);
+    expect(status).toBe(200);
+    const t = body as { data: { sentence: string }[] };
+    expect(t.data.length).toBeGreaterThan(0);
+    // Rendered server-side so every client says it the same way.
+    for (const e of t.data) expect(e.sentence.endsWith('.')).toBe(true);
+  });
+
+  /**
+   * The browser's preflight must allow every header the client actually sends.
+   *
+   * `x-device-id` goes on EVERY request — the sync engine dedupes deliveries
+   * per device — and it was missing from allowedHeaders. The preflight
+   * answered 204 with an allow-origin, so it looked fine, and then the browser
+   * rejected the real request. curl worked perfectly throughout; the product
+   * was simply unreachable from a browser.
+   */
+  it('CORS allows every header the web client sends', async () => {
+    const sent = ['content-type', 'authorization', 'x-device-id'];
+    const res = await fetch(`${BASE}/auth/login`, {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'http://localhost:5173',
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': sent.join(','),
+      },
+    });
+    expect(res.status).toBeLessThan(300);
+    const allowed = (res.headers.get('access-control-allow-headers') ?? '').toLowerCase();
+    for (const h of sent) {
+      expect(allowed, `preflight does not allow ${h} — the browser will reject the real request`)
+        .toContain(h);
+    }
+    expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
+  });
+
   it('an unauthenticated request is refused, not served', async () => {
     const res = await fetch(`${BASE}/users`);
     expect(res.status).toBe(401);

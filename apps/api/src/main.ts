@@ -34,6 +34,12 @@ async function bootstrap(): Promise<void> {
     allowedHeaders: [
       'Content-Type', 'Authorization', 'If-Match',
       'Idempotency-Key', 'X-Correlation-Id',
+      // The web client sends X-Device-Id on EVERY request — the sync engine
+      // dedupes deliveries per device. Omitting it here made the preflight
+      // succeed (204, with allow-origin) and then the browser reject the real
+      // request, so the whole product was unreachable from a browser while
+      // curl worked perfectly.
+      'X-Device-Id', 'X-App-Version',
     ],
     exposedHeaders: ['X-Correlation-Id', 'ETag'],
   });

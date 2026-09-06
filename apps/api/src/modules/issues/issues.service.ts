@@ -157,10 +157,18 @@ export class IssuesService {
 
         // FR-446: closure evidence. An issue resolved with no photograph is a
         // claim, and the whole point of the product is that claims carry proof.
-        const evidence = await trx.selectFrom('app.evidence_links')
-          .select('id').where('entity_type', '=', 'issue').where('entity_id', '=', issueId)
-          .where('purpose', 'in', ['closure', 'after', 'issue'])
-          .where('unlinked_at', 'is', null).executeTakeFirst();
+        // The ASSET must have landed, not merely been promised. A link is
+        // created at presign so capture and attach are one round trip, which
+        // means an abandoned upload leaves a link pointing at an asset still
+        // in `pending_upload` — and a guard that only checked for a link would
+        // accept a resolution backed by a photograph that does not exist.
+        const evidence = await trx.selectFrom('app.evidence_links as l')
+          .innerJoin('app.evidence_assets as a', 'a.id', 'l.evidence_id')
+          .select('l.id').where('l.entity_type', '=', 'issue').where('l.entity_id', '=', issueId)
+          .where('l.purpose', 'in', ['closure', 'after', 'issue'])
+          .where('l.unlinked_at', 'is', null)
+          .where('a.state', 'in', ['uploaded', 'ready'])
+          .executeTakeFirst();
         if (!evidence) {
           throw new BadRequestException(
             'Attach a photo of the completed work before resolving this issue.',

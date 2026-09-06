@@ -7,6 +7,7 @@ import type { PermissionKey } from '@ct/contracts';
 import { PermissionService } from './permission.service.js';
 import { REQUIRED_PERMISSIONS, NO_PERMISSION_REQUIRED } from './permission.decorator.js';
 import { IS_PUBLIC } from '../auth/public.decorator.js';
+import { enrichContext } from '../../common/correlation.js';
 
 /**
  * Route-level authorisation.
@@ -51,12 +52,34 @@ export class PermissionGuard implements CanActivate {
 
     // ANY of the declared keys is sufficient: a route reachable by two
     // different roles states both rather than being duplicated.
-    const held = required.some((k) => this.permissions.holds(req.auth!.permissions, k));
-    if (!held) {
+    const satisfiedBy = required.find((k) => this.permissions.holds(req.auth!.permissions, k));
+    if (!satisfiedBy) {
       throw new ForbiddenException(
         `Requires one of: ${required.join(', ')}`,
       );
     }
+
+    /**
+     * Record WHICH grant let this request through.
+     *
+     * FR-030 is that the audit trail says "Ramesh approved this as Project
+     * Manager", not merely that Ramesh approved it. The grant and its label
+     * were resolved right here, on every request, and then discarded — so
+     * audit.write found nothing in the ambient context and 0 of 40 audit rows
+     * carried a grant.
+     *
+     * The ambient context is the only place that covers every route. The
+     * alternative was 104 withTenant call sites each remembering to pass it,
+     * and 89 of them did not.
+     */
+    const scope = req.auth.permissions.keys[satisfiedBy];
+    if (scope) {
+      enrichContext({
+        grantId: scope.grantId,
+        responsibilityLabel: scope.responsibilityLabel,
+      });
+    }
+
     return true;
   }
 }

@@ -46,8 +46,9 @@ export function OfficeLogin() {
   };
 
   return (
-    <Centred>
-      <form className="card card-p stack" onSubmit={submit} style={{ width: 'min(24rem, 100%)' }}>
+    <Centred aside={ASIDE}>
+      <form className="card card-p stack" onSubmit={submit}
+            style={{ width: 'min(24rem, 100%)', boxShadow: 'var(--shadow-md)' }}>
         <Brand subtitle="Sign in to your organisation" />
         {error ? <ErrorBanner error={error} /> : null}
         <label className="field">
@@ -66,6 +67,13 @@ export function OfficeLogin() {
         </button>
         <a href="/site/login" className="small muted" style={{ textAlign: 'center' }}>
           Working on site? Sign in with your phone
+        </a>
+        {/* The platform console is a different identity domain entirely: a
+            platform account is structurally invalid here and returns 401. Say
+            so, rather than letting somebody try their platform credentials on
+            the tenant door and conclude the product is broken. */}
+        <a href="/admin/login" className="xs muted" style={{ textAlign: 'center' }}>
+          Platform administrator? Sign in here
         </a>
       </form>
     </Centred>
@@ -110,7 +118,7 @@ export function SiteLogin() {
   return (
     <Centred className="site">
       <form className="card card-p stack" onSubmit={stage === 'phone' ? requestCode : verify}
-            style={{ width: 'min(24rem, 100%)' }}>
+            style={{ width: 'min(24rem, 100%)', boxShadow: 'var(--shadow-md)' }}>
         <Brand subtitle="Sign in with your phone" />
         {error ? <ErrorBanner error={error} /> : null}
 
@@ -182,7 +190,8 @@ export function PlatformLogin() {
 
   return (
     <Centred>
-      <form className="card card-p stack" onSubmit={submit} style={{ width: 'min(24rem, 100%)' }}>
+      <form className="card card-p stack" onSubmit={submit}
+            style={{ width: 'min(24rem, 100%)', boxShadow: 'var(--shadow-md)' }}>
         <div style={{ height: 3, background: 'var(--destructive)', borderRadius: 2 }} aria-hidden />
         <Brand subtitle="Platform administration" />
         {error ? <ErrorBanner error={error} /> : null}
@@ -205,27 +214,89 @@ export function PlatformLogin() {
   );
 }
 
+export function Mark({ size = 40 }: { size?: number }) {
+  /**
+   * The mark: a plumb bob over a base line. Drawn rather than gradient-filled
+   * — a two-colour gradient square is what every SaaS starter ships, and this
+   * product is for people who measure things.
+   */
+  return (
+    <span aria-hidden style={{
+      width: size, height: size, flex: 'none', borderRadius: size * 0.24,
+      background: 'var(--primary)', display: 'grid', placeItems: 'center',
+      boxShadow: 'var(--shadow-sm), inset 0 1px 0 rgb(255 255 255 / 0.12)',
+    }}>
+      <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none">
+        <path d="M12 2v7" stroke="#7dd3fc" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="m12 9 4 5-4 6-4-6 4-5Z" fill="#38bdf8" />
+        <path d="M4 22h16" stroke="#7dd3fc" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    </span>
+  );
+}
+
 function Brand({ subtitle }: { subtitle: string }) {
   return (
     <div className="row" style={{ gap: 'var(--s3)' }}>
-      <span aria-hidden style={{
-        width: 40, height: 40, borderRadius: 8, flex: 'none',
-        background: 'linear-gradient(135deg, var(--primary), var(--accent))',
-      }} />
+      <Mark />
       <div className="stack-2" style={{ gap: 0 }}>
-        <strong style={{ fontSize: 'var(--text-lg)' }}>Control Tower</strong>
+        <strong style={{ fontSize: 'var(--text-lg)', letterSpacing: 'var(--track-tight)' }}>
+          Control Tower
+        </strong>
         <span className="small muted">{subtitle}</span>
       </div>
     </div>
   );
 }
 
-function Centred({ children, className }: { children: React.ReactNode; className?: string }) {
+/**
+ * A two-panel sign-in on desktop, a single centred card on a phone.
+ *
+ * The left panel is not decoration: it states what the product does, which is
+ * the one moment a new site engineer has to read it. On the site surface the
+ * panel is dropped entirely — a supervisor signing in on a phone at 7am wants
+ * the number pad, not the pitch.
+ */
+function Centred({ children, className, aside }: {
+  children: React.ReactNode; className?: string; aside?: React.ReactNode;
+}) {
   return (
-    <div className={className} style={{
-      minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 'var(--s5)',
-    }}>
-      {children}
+    <div className={className} style={{ minHeight: '100vh', display: 'flex' }}>
+      {aside ? (
+        <aside className="login-aside">
+          {aside}
+        </aside>
+      ) : null}
+      <div style={{
+        flex: 1, display: 'grid', placeItems: 'center',
+        padding: 'var(--s6) var(--s5)', minWidth: 0,
+      }}>
+        {children}
+      </div>
     </div>
   );
 }
+
+const ASIDE = (
+  <div className="stack" style={{ gap: 'var(--s6)', maxWidth: '26rem' }}>
+    <Mark size={44} />
+    <h2 style={{ fontSize: 'var(--text-2xl)', color: '#fff', letterSpacing: 'var(--track-tight)' }}>
+      Know what is actually happening on site.
+    </h2>
+    <ul className="stack-2" style={{ gap: 'var(--s3)' }}>
+      {[
+        'Quantities recorded where the work is, with photographs',
+        'Verified by a second person before they count',
+        'Approvals, issues and the audit trail in one place',
+      ].map((line) => (
+        <li key={line} className="row" style={{ gap: 'var(--s3)', alignItems: 'flex-start' }}>
+          <span aria-hidden style={{
+            width: 6, height: 6, borderRadius: '50%', background: '#38bdf8',
+            marginTop: 8, flex: 'none',
+          }} />
+          <span style={{ color: 'rgb(255 255 255 / 0.78)' }}>{line}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);

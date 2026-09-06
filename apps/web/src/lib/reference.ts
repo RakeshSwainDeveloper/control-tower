@@ -45,7 +45,9 @@ export const reference = {
     readThrough<LocationNode>(`locations:${projectId}`, `/projects/${projectId}/locations`),
 
   workItems: (projectId: string) =>
-    readThrough<WorkItemRef>(`work:${projectId}`, `/projects/${projectId}/work-items?limit=500`),
+    readThrough<WorkItemRef>(`work:${projectId}`, // The API caps this at 200. Asking for 500 returned 422 on every load,
+    // which the catch below turned into "you appear to be offline".
+    `/projects/${projectId}/work-items?limit=200`),
 };
 
 /* ── Recents ────────────────────────────────────────────────────

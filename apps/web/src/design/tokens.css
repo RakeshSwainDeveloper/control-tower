@@ -1,10 +1,11 @@
 /* ============================================================================
    Control Tower — design tokens
-   Source: STACK_AND_DOCKER_PLAN.md §6 (design-system skill, second run,
-   "Accessible & Ethical"), with the deviations recorded there.
+   Source: STACK_AND_DOCKER_PLAN.md §6 (design-system skill), refined in the
+   premium pass. Semantic names are unchanged, so every screen inherits the
+   new values without a line of component change.
 
-   Light-first and light-only for this release. Site users work outdoors in
-   sunlight; UI_UX_PLAN.md §3.5 puts dark mode in P2. There is deliberately no
+   Light-first and light-only. Site users work outdoors in sunlight;
+   UI_UX_PLAN.md §3.5 puts dark mode in P2. There is deliberately no
    prefers-color-scheme block — a half-tested dark theme on a phone held up to
    a concrete slab at noon is worse than no dark theme.
    ========================================================================= */
@@ -12,68 +13,141 @@
 :root {
   color-scheme: light;
 
-  /* ── Palette ─────────────────────────────────────────────────── */
-  --primary:        #0f172a;   /* slate-900 */
+  /* ── Neutral ramp ────────────────────────────────────────────────
+     A full ramp rather than four greys. Borders, surfaces and text need
+     to differ by small, deliberate amounts; picking from three values is
+     what makes an interface look flat and cheap. Slate-based, so the
+     neutrals sit under the slate primary without a colour clash. */
+  --n-0:   #ffffff;
+  --n-25:  #fcfdfe;
+  --n-50:  #f8fafc;
+  --n-100: #f1f5f9;
+  --n-150: #e9eef4;
+  --n-200: #e2e8f0;
+  --n-300: #cbd5e1;
+  --n-400: #94a3b8;
+  --n-500: #64748b;
+  --n-600: #475569;
+  --n-700: #334155;
+  --n-800: #1e293b;
+  --n-900: #0f172a;
+  --n-950: #020617;
+
+  /* ── Brand ───────────────────────────────────────────────────────
+     Slate-900 and sky-700, unchanged: a blue this deep reads as
+     instrument panel rather than consumer app, which is the right note
+     for something a project is run from. */
+  --primary:        var(--n-900);
+  --primary-hover:  var(--n-800);
   --primary-fg:     #ffffff;
-  --accent:         #0369a1;   /* sky-700  */
+  --accent:         #0369a1;
+  --accent-hover:   #075985;
   --accent-fg:      #ffffff;
   --accent-weak:    #e0f2fe;
-  --bg:             #f8fafc;
-  --card:           #ffffff;
-  --border:         #e2e8f0;
-  --border-strong:  #cbd5e1;
-  --fg:             #020617;
-  --muted-fg:       #475569;   /* 4.6:1 on --bg */
-  --destructive:    #dc2626;
+  --accent-weaker:  #f0f9ff;
+
+  /* ── Surfaces ───────────────────────────────────────────────────── */
+  --bg:            var(--n-50);
+  --bg-subtle:     var(--n-100);
+  --card:          var(--n-0);
+  --card-hover:    var(--n-25);
+  --border:        var(--n-200);
+  --border-subtle: var(--n-150);
+  --border-strong: var(--n-300);
+
+  /* ── Text ────────────────────────────────────────────────────────
+     Three weights of meaning, not two. `--fg-muted` is for supporting
+     text a person still reads; `--fg-subtle` is for metadata they scan.
+     Both clear 4.5:1 on --card and --bg. */
+  --fg:         var(--n-950);
+  --fg-muted:   var(--n-600);
+  --fg-subtle:  var(--n-500);
+  --muted-fg:   var(--fg-muted);   /* retained name, used across all screens */
+  --destructive:       #dc2626;
+  --destructive-hover: #b91c1c;
+  --destructive-weak:  #fef2f2;
 
   /* ── Semantic status, driven by state_class and NEVER by label ──
-     MVP_DATABASE_SCOPE §4: a tenant renames "Verified" to "Checked" and the
-     colour must not move. These map to state_class, not to status.label. */
-  --st-draft:       #64748b;  --st-draft-bg:      #f1f5f9;
-  --st-submitted:   #0369a1;  --st-submitted-bg:  #e0f2fe;
-  --st-review:      #7c3aed;  --st-review-bg:     #f3e8ff;
-  --st-approval:    #7c3aed;  --st-approval-bg:   #f3e8ff;
-  --st-approved:    #15803d;  --st-approved-bg:   #dcfce7;
-  --st-rejected:    #b91c1c;  --st-rejected-bg:   #fee2e2;
-  --st-progress:    #b45309;  --st-progress-bg:   #fef3c7;
-  --st-resolved:    #0369a1;  --st-resolved-bg:   #e0f2fe;
-  --st-verified:    #15803d;  --st-verified-bg:   #dcfce7;
-  --st-closed:      #475569;  --st-closed-bg:     #f1f5f9;
-  --st-cancelled:   #64748b;  --st-cancelled-bg:  #f1f5f9;
-  --st-hold:        #b45309;  --st-hold-bg:       #fef3c7;
-  --st-void:        #94a3b8;  --st-void-bg:       #f8fafc;
+     MVP_DATABASE_SCOPE §4: a tenant renames "Verified" to "Checked" and
+     the colour must not move. Each pairs a readable foreground with a
+     tinted surface and a border, so a chip has an edge rather than
+     floating on a wash. */
+  --st-draft:       #475569;  --st-draft-bg:      #f1f5f9;  --st-draft-br:      #dbe3ec;
+  --st-submitted:   #0369a1;  --st-submitted-bg:  #e0f2fe;  --st-submitted-br:  #bae0f7;
+  --st-review:      #6d28d9;  --st-review-bg:     #f3e8ff;  --st-review-br:     #e2d3f8;
+  --st-approval:    #6d28d9;  --st-approval-bg:   #f3e8ff;  --st-approval-br:   #e2d3f8;
+  --st-approved:    #15803d;  --st-approved-bg:   #dcfce7;  --st-approved-br:   #bbf0cb;
+  --st-rejected:    #b91c1c;  --st-rejected-bg:   #fee2e2;  --st-rejected-br:   #f8c9c9;
+  --st-progress:    #b45309;  --st-progress-bg:   #fef3c7;  --st-progress-br:   #f5e0a3;
+  --st-resolved:    #0369a1;  --st-resolved-bg:   #e0f2fe;  --st-resolved-br:   #bae0f7;
+  --st-verified:    #15803d;  --st-verified-bg:   #dcfce7;  --st-verified-br:   #bbf0cb;
+  --st-closed:      #475569;  --st-closed-bg:     #f1f5f9;  --st-closed-br:     #dbe3ec;
+  --st-cancelled:   #64748b;  --st-cancelled-bg:  #f1f5f9;  --st-cancelled-br:  #dbe3ec;
+  --st-hold:        #b45309;  --st-hold-bg:       #fef3c7;  --st-hold-br:       #f5e0a3;
+  --st-void:        #94a3b8;  --st-void-bg:       #f8fafc;  --st-void-br:       #e9eef4;
 
   /* Severity — issues only. Deliberately NOT reused for state. */
-  --sev-low:        #475569;  --sev-low-bg:       #f1f5f9;
-  --sev-medium:     #b45309;  --sev-medium-bg:    #fef3c7;
-  --sev-high:       #c2410c;  --sev-high-bg:      #ffedd5;
-  --sev-critical:   #b91c1c;  --sev-critical-bg:  #fee2e2;
+  --sev-low:        #475569;  --sev-low-bg:       #f1f5f9;  --sev-low-br:       #dbe3ec;
+  --sev-medium:     #b45309;  --sev-medium-bg:    #fef3c7;  --sev-medium-br:    #f5e0a3;
+  --sev-high:       #c2410c;  --sev-high-bg:      #ffedd5;  --sev-high-br:      #fbd4ac;
+  --sev-critical:   #b91c1c;  --sev-critical-bg:  #fee2e2;  --sev-critical-br:  #f8c9c9;
 
   /* ── Type ───────────────────────────────────────────────────────
      Inter, not Fira Sans: better at 14px in dense tables, and first-class
-     tabular numerals, which every quantity column needs. Loaded as a system
-     stack — no webfont request, because the first paint happens on 4G. */
-  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-          "Helvetica Neue", Arial, sans-serif;
+     tabular numerals, which every quantity column needs. Loaded as a
+     system stack — no webfont request, because the first paint happens
+     on 4G. */
+  --font: Inter, "Inter var", ui-sans-serif, system-ui, -apple-system,
+          "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 
   --text-xs:   0.75rem;    /* 12px — metadata only, never a label a site user must read */
-  --text-sm:   0.8125rem;  /* 13px */
-  --text-base: 0.9375rem;  /* 15px */
+  --text-sm:   0.8125rem;
+  --text-base: 0.9375rem;  /* 15px — the workhorse */
   --text-md:   1rem;
   --text-lg:   1.125rem;
   --text-xl:   1.375rem;
   --text-2xl:  1.75rem;
+  --text-3xl:  2.25rem;
+  --text-4xl:  3rem;
   --text-num:  2rem;       /* the quantity on S-M03 */
+
+  /* Optical tracking: display type wants negative, small caps-y labels
+     want positive. Getting this wrong is most of what makes type look
+     amateur at a glance. */
+  --track-tight:  -0.02em;
+  --track-snug:   -0.011em;
+  --track-normal: 0;
+  --track-wide:   0.04em;
+  --track-caps:   0.06em;
+
+  --leading-tight: 1.2;
+  --leading-snug:  1.35;
+  --leading:       1.55;
 
   /* ── Space & shape ──────────────────────────────────────────── */
   --s1: 0.25rem;  --s2: 0.5rem;   --s3: 0.75rem;  --s4: 1rem;
   --s5: 1.25rem;  --s6: 1.5rem;   --s8: 2rem;     --s10: 2.5rem;
-  --r-sm: 0.375rem; --r: 0.5rem;  --r-lg: 0.75rem; --r-full: 999px;
+  --s12: 3rem;    --s16: 4rem;    --s20: 5rem;    --s24: 6rem;
 
-  --shadow-sm: 0 1px 2px rgb(2 6 23 / 0.06);
-  --shadow:    0 1px 3px rgb(2 6 23 / 0.10), 0 1px 2px rgb(2 6 23 / 0.06);
-  --shadow-lg: 0 10px 25px rgb(2 6 23 / 0.12);
+  --r-sm:   0.375rem;
+  --r:      0.5rem;
+  --r-md:   0.625rem;
+  --r-lg:   0.75rem;
+  --r-xl:   1rem;
+  --r-full: 999px;
+
+  /* ── Elevation ──────────────────────────────────────────────────
+     Two-layer shadows with a tight contact shadow plus a soft ambient
+     one. A single large blur is what makes a card look like it is
+     floating in fog; this reads as paper on a desk. Tinted with the
+     neutral hue rather than pure black. */
+  --shadow-xs: 0 1px 2px rgb(15 23 42 / 0.04);
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05), 0 1px 3px rgb(15 23 42 / 0.04);
+  --shadow:    0 1px 2px rgb(15 23 42 / 0.05), 0 2px 6px -1px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 2px 4px rgb(15 23 42 / 0.05), 0 6px 16px -4px rgb(15 23 42 / 0.10);
+  --shadow-lg: 0 4px 8px rgb(15 23 42 / 0.05), 0 16px 32px -8px rgb(15 23 42 / 0.14);
+  --shadow-focus: 0 0 0 3px rgb(3 105 161 / 0.16);
 
   /* ── Touch ──────────────────────────────────────────────────────
      48px, not the skill's 44. Gloves and wet hands (UI_UX_PLAN §3.5).
@@ -82,11 +156,23 @@
   --touch: 48px;
   --touch-office: 36px;
 
-  --dur: 180ms;
-  --ease: cubic-bezier(0.2, 0, 0, 1);
+  /* ── Motion ─────────────────────────────────────────────────────
+     Two durations and two curves. `--ease` decelerates, for things
+     arriving; `--ease-out` is for things leaving and for hovers, where
+     the response must feel immediate. */
+  --dur-fast: 120ms;
+  --dur:      180ms;
+  --dur-slow: 280ms;
+  --ease:     cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root { --dur: 0ms; }
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  :root { --dur-fast: 0ms; --dur: 0ms; --dur-slow: 0ms; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

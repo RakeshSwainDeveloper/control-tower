@@ -2,36 +2,72 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; }
+html { -webkit-text-size-adjust: 100%; }
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font);
   font-size: var(--text-base);
-  line-height: 1.5;
-  /* Every quantity column must align. Not optional (§6). */
+  line-height: var(--leading);
+  letter-spacing: var(--track-snug);
+  /* Every quantity column must align. Not optional (§6). `cv11` gives a
+     single-storey lowercase L so "l" and "1" cannot be confused in a
+     work-item code read off a phone in poor light. */
   font-variant-numeric: tabular-nums;
+  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
+  /* Nothing on any screen may scroll the page sideways. Wide content gets
+     its own scroll container (.scroll-x). */
+  overflow-x: hidden;
 }
 
-h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.011em; }
+h1, h2, h3, h4 {
+  margin: 0;
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--track-tight);
+  text-wrap: balance;
+}
 h1 { font-size: var(--text-xl); }
 h2 { font-size: var(--text-lg); }
-h3 { font-size: var(--text-md); }
-p  { margin: 0; }
+h3 { font-size: var(--text-md); letter-spacing: var(--track-snug); }
+p  { margin: 0; text-wrap: pretty; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
+strong, b { font-weight: 600; }
+
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { color: var(--accent-hover); }
 
 /* Every clickable gets a pointer, and every focusable a visible ring.
-   The ring is 2px offset so it survives on dark chips and light cards alike. */
+   The ring is offset so it survives on dark chips and light cards alike,
+   and the soft halo makes it legible in sunlight where a 1px outline
+   disappears. */
 button, [role="button"], a, summary, label[for], select { cursor: pointer; }
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--r-sm);
+  box-shadow: var(--shadow-focus);
 }
 :focus:not(:focus-visible) { outline: none; }
+
+::selection { background: var(--accent-weak); color: var(--n-900); }
+
+/* Thin, unobtrusive scrollbars on the surfaces that get them. The default
+   Chromium bar is 15px and dominates a narrow drawer. */
+* { scrollbar-width: thin; scrollbar-color: var(--n-300) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--n-300); border-radius: var(--r-full);
+  border: 3px solid transparent; background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--n-400); background-clip: content-box; }
 
 /* Skip link — the office surface has a persistent sidebar, so keyboard users
    would otherwise tab through the whole nav on every route change. */
@@ -39,6 +75,7 @@ button, [role="button"], a, summary, label[for], select { cursor: pointer; }
   position: absolute; left: -9999px; top: var(--s2);
   background: var(--primary); color: var(--primary-fg);
   padding: var(--s2) var(--s4); border-radius: var(--r); z-index: 100;
+  font-weight: 600;
 }
 .skip:focus { left: var(--s2); }
 
@@ -50,13 +87,30 @@ button, [role="button"], a, summary, label[for], select { cursor: pointer; }
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
-input, select, textarea, button { font: inherit; color: inherit; }
+input, select, textarea, button { font: inherit; color: inherit; letter-spacing: inherit; }
 input[type="number"] { -moz-appearance: textfield; }
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+::placeholder { color: var(--n-400); }
 
-img { max-width: 100%; display: block; }
+img, svg, video { max-width: 100%; display: block; }
 hr { border: 0; border-top: 1px solid var(--border); margin: var(--s5) 0; }
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  padding: 0.05em 0.35em;
+}
 
 /* Scroll containers announce themselves rather than clipping silently. */
 .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Printing matters here: the daily report is printed and signed on site. */
+@media print {
+  body { background: #fff; }
+  nav, .skip, .sync-badge, button { display: none !important; }
+  .card { border-color: #ccc !important; box-shadow: none !important; }
+}

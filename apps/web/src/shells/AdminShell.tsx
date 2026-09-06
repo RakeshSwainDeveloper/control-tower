@@ -28,15 +28,7 @@ export function AdminShell() {
           <strong>Control Tower · Platform</strong>
           <nav aria-label="Platform" className="row" style={{ gap: 'var(--s1)' }}>
             {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to} end={n.end}
-                style={({ isActive }) => ({
-                  display: 'flex', alignItems: 'center', gap: 'var(--s2)',
-                  padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r)',
-                  minHeight: 'var(--touch-office)', textDecoration: 'none',
-                  fontSize: 'var(--text-sm)', color: 'inherit',
-                  background: isActive ? 'rgb(255 255 255 / 0.14)' : 'transparent',
-                  fontWeight: isActive ? 600 : 400,
-                })}>
+              <NavLink key={n.to} to={n.to} end={n.end} className="nav-link nav-link-invert">
                 <n.icon size={16} aria-hidden /> {n.label}
               </NavLink>
             ))}

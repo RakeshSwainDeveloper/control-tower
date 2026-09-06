@@ -12,7 +12,8 @@
     "seed": "node --conditions=development --import @swc-node/register/esm-register src/cli/seed.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "seed:bulk": "node --conditions=development --import @swc-node/register/esm-register src/cli/seed-bulk.ts"
   },
   "dependencies": {
     "@ct/contracts": "workspace:*",

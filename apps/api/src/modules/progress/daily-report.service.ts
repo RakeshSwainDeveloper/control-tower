@@ -175,6 +175,79 @@ export class DailyReportService {
    * record that can be quietly rewritten after the fact is not evidence of
    * anything.
    */
+  /**
+   * The list, and one report in full.
+   *
+   * `today()` answers "what is happening on this date" and is what the site
+   * surface needs. The office needs the other two questions — "what have we
+   * had" and "show me that one" — and had no endpoint for either, so S-W05
+   * rendered an empty list against a payload that was never a list.
+   */
+  async list(actor: ProgressActor, projectId: string, opts: {
+    cursor?: string; limit: number; from?: string; to?: string;
+  }) {
+    if (!this.permissions.holdsOnProject(actor.permissions, 'field.daily_report.read', projectId)) {
+      assertVisible(null, 'Project');
+    }
+    return withTenant(this.db, { orgId: actor.orgId }, async (trx) => {
+      let qb = trx.selectFrom('app.daily_reports as r')
+        .leftJoin('app.users as u', 'u.id', 'r.submitted_by')
+        .select(['r.id', 'r.report_number', 'r.report_date', 'r.state_class',
+                 'r.weather', 'r.notes', 'r.submitted_at',
+                 'u.name as submitted_by_name',
+                 (eb) => eb.selectFrom('app.progress_entries as p')
+                   .select((e) => e.fn.countAll<number>().as('n'))
+                   .whereRef('p.daily_report_id', '=', 'r.id').as('entry_count')])
+        .where('r.project_id', '=', projectId)
+        .orderBy('r.report_date', 'desc')
+        .limit(opts.limit + 1);
+
+      if (opts.from) qb = qb.where('r.report_date', '>=', opts.from);
+      if (opts.to) qb = qb.where('r.report_date', '<=', opts.to);
+      if (opts.cursor) qb = qb.where('r.report_date', '<', opts.cursor);
+
+      const rows = await qb.execute();
+      const hasMore = rows.length > opts.limit;
+      const data = hasMore ? rows.slice(0, opts.limit) : rows;
+      return {
+        data,
+        next_cursor: hasMore ? String(data[data.length - 1]!.report_date).slice(0, 10) : null,
+        has_more: hasMore,
+      };
+    });
+  }
+
+  async one(actor: ProgressActor, projectId: string, reportId: string) {
+    if (!this.permissions.holdsOnProject(actor.permissions, 'field.daily_report.read', projectId)) {
+      assertVisible(null, 'Project');
+    }
+    return withTenant(this.db, { orgId: actor.orgId }, async (trx) => {
+      const report = assertVisible(
+        await trx.selectFrom('app.daily_reports as r')
+          .leftJoin('app.users as u', 'u.id', 'r.submitted_by')
+          .select(['r.id', 'r.report_number', 'r.report_date', 'r.state_class',
+                   'r.weather', 'r.notes', 'r.submitted_at',
+                   'u.name as submitted_by_name'])
+          .where('r.id', '=', reportId).where('r.project_id', '=', projectId)
+          .executeTakeFirst(),
+        'Daily report',
+      );
+      const entries = await trx.selectFrom('app.progress_entries as p')
+        .innerJoin('app.work_items as w', 'w.id', 'p.work_item_id')
+        .innerJoin('app.units as u', 'u.id', 'p.unit_id')
+        .leftJoin('app.location_paths as lp', 'lp.location_id', 'p.location_id')
+        .leftJoin('app.users as ru', 'ru.id', 'p.reported_by')
+        .select(['p.id', 'p.reported_qty', 'p.verified_qty', 'p.verification_status',
+                 'p.verification_reason', 'w.description as work_item',
+                 'u.code as unit', 'lp.display_path as location',
+                 'ru.name as reported_by_name', 'p.reported_responsibility'])
+        .where('p.daily_report_id', '=', reportId)
+        .orderBy('p.id')
+        .execute();
+      return { report, entries };
+    });
+  }
+
   async submit(actor: ProgressActor, projectId: string, reportId: string) {
     if (!this.permissions.holdsOnProject(actor.permissions, 'field.daily_report.submit', projectId)) {
       assertVisible(null, 'Project');

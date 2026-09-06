@@ -122,6 +122,13 @@ describe('issue lifecycle', () => {
         gps_lat: '12.9716', gps_lng: '77.5946',
         captured_at_device: new Date(), captured_by: users[0]!,
         capture_method: 'in_app_camera',
+        // 'uploaded', not the default 'pending_upload'. Phase 7 tightened the
+        // resolve guard to require the ASSET to have landed, not merely a link
+        // to exist — an abandoned upload leaves a link pointing at nothing, and
+        // a guard that only checked for the link would accept a resolution
+        // backed by a photograph that does not exist. This fixture was doing
+        // exactly that.
+        state: 'uploaded', uploaded_at: new Date(),
       }).returning('id').executeTakeFirstOrThrow();
 
       return { projectId: project.id, users, evidenceId: asset.id };

@@ -133,6 +133,37 @@ export class EvidenceService {
         is_offline_origin: !!input.clientUuid,
       }).execute();
 
+        /**
+         * Attach it now, at capture, not at completion.
+         *
+         * `presignSchema` has always documented `link` as "link on completion,
+         * so capture and attach are one round trip" — and nothing ever created
+         * the row. The field was accepted, used only for the duplicate check,
+         * then silently discarded, so a client that trusted it ended up with an
+         * unattached photograph and no error to act on.
+         *
+         * Written here rather than in complete() because the intent exists at
+         * capture and there is nowhere durable to keep it otherwise. A link
+         * whose upload never lands points at an asset still in
+         * `pending_upload`, which is why every guard that requires evidence
+         * must check the ASSET STATE, not merely that a link exists.
+         */
+        if (input.link) {
+          await trx.insertInto('app.evidence_links').values({
+            org_id: actor.orgId,
+            project_id: input.projectId ?? null,
+            evidence_id: id,
+            entity_type: input.link.entityType,
+            entity_id: input.link.entityId,
+            purpose: input.purpose,
+            location_id: input.locationId ?? null,
+            caption: input.link.caption ?? null,
+            linked_by: actor.userId,
+            linked_by_grant_id: actor.grantId ?? null,
+          }).onConflict((oc) => oc.doNothing()).execute();
+        }
+
+
       const upload = await this.storage.presignUpload(key, input.mime, input.sizeBytes);
 
       return {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CalendarDays, FileWarning } from 'lucide-react';
-import { api, ApiError } from '../../lib/api.js';
+import { CalendarDays, FileWarning, Printer } from 'lucide-react';
+import { api, ApiError, API_BASE } from '../../lib/api.js';
 import { useSession } from '../../lib/session.js';
 import { StatusChip } from '../../components/StatusChip.js';
 import { RecordPage, Details, Timeline, type TimelineEvent } from '../../components/RecordPage.js';
@@ -45,7 +45,10 @@ export function DailyReports() {
       api.get<{ data?: string[]; missing?: string[] }>(
         `/projects/${projectId}/daily-report/missing?from=${from}&to=${to}`)
         .then((r) => r.missing ?? r.data ?? []).catch(() => [] as string[]),
-      api.get<{ data: Report[] }>(`/projects/${projectId}/daily-report?limit=60`)
+      // Plural. The singular route answers "what is happening today" — a
+      // different question, and reading `.data` off it silently produced an
+      // empty list for the whole of wave 4.
+      api.get<{ data: Report[] }>(`/projects/${projectId}/daily-reports?limit=60`)
         .then((r) => r.data ?? []).catch(() => [] as Report[]),
     ]).then(([m, rs]) => { setMissing(m); setReports(rs); })
       .catch((e) => setError(e instanceof ApiError ? e : null))
@@ -140,7 +143,7 @@ export function DailyReportDetail() {
     void (async () => {
       try {
         const r = await api.get<{ report: Report; entries: Entry[] }>(
-          `/projects/${projectId}/daily-report?reportId=${reportId}`);
+          `/projects/${projectId}/daily-reports/${reportId}`);
         setReport(r.report);
         setEntries(r.entries ?? []);
         setAssets(await loadEvidence('daily_report', reportId).catch(() => []));
@@ -181,6 +184,12 @@ export function DailyReportDetail() {
             report.submitted_responsibility ? ` as ${report.submitted_responsibility}` : ''}`
         : 'Not yet submitted'}
       chips={<StatusChip state={report.state_class} />}
+      actions={
+        <a className="btn" target="_blank" rel="noreferrer"
+           href={`${API_BASE}/projects/${projectId}/daily-report/${report.id}/print`}>
+          <Printer size={16} aria-hidden /> Print
+        </a>
+      }
       details={
         <>
           <Details items={[

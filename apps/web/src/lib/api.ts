@@ -6,6 +6,8 @@
  * screen can render without unwrapping anything.
  */
 
+import { uuid } from './crypto.js';
+
 export const API_BASE: string =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/v1';
 
@@ -64,7 +66,7 @@ export const tokens = {
   deviceId(): string {
     let id = localStorage.getItem(DEVICE);
     if (!id) {
-      id = crypto.randomUUID();
+      id = uuid();
       localStorage.setItem(DEVICE, id);
     }
     return id;
@@ -120,13 +122,33 @@ export async function request<T>(
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: opts.signal,
     });
-  } catch (cause) {
-    // A dead network is not a server error, and must not be reported as one.
-    // The offline surface reads status 0 and shows a badge, not a dialog.
+  } catch {
+    /**
+     * fetch() throws the same TypeError for a dead network, a DNS failure, a
+     * refused connection AND a CORS rejection. Reporting all of them as
+     * "you appear to be offline" is wrong three times out of four, and it sent
+     * somebody looking at their wifi when the real answer was a missing
+     * `Access-Control-Allow-Headers` on the server.
+     *
+     * `navigator.onLine` is the one thing that separates them: false is
+     * genuinely offline; true means the browser has a network and the request
+     * did not survive it.
+     */
+    if (!navigator.onLine) {
+      throw new ApiError({
+        title: 'No connection',
+        status: 0,
+        detail: 'You appear to be offline. Your work is saved on this device.',
+      });
+    }
     throw new ApiError({
-      title: 'No connection',
+      title: 'Could not reach the server',
+      // Still 0 — no HTTP response happened — but the words are honest.
       status: 0,
-      detail: 'You appear to be offline. Your work is saved on this device.',
+      detail:
+        `The request to ${API_BASE} did not complete. The server may be down, ` +
+        'or it may be refusing requests from this page. Nothing you entered ' +
+        'has been lost.',
     });
   }
 

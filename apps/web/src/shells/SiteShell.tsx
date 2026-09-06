@@ -51,16 +51,7 @@ export function SiteShell() {
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}>
         {tabs.map((t) => (
-          <NavLink
-            key={t.to} to={t.to} end={t.end}
-            style={({ isActive }) => ({
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: 2,
-              minHeight: 'var(--touch)', padding: 'var(--s2) 0',
-              textDecoration: 'none', fontSize: 'var(--text-xs)', fontWeight: 600,
-              color: isActive ? 'var(--accent)' : 'var(--muted-fg)',
-            })}
-          >
+          <NavLink key={t.to} to={t.to} end={t.end} className="tab">
             <t.icon size={20} aria-hidden />
             {t.label}
           </NavLink>

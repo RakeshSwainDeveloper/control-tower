@@ -389,7 +389,46 @@ export class ProgressService {
     const qualifier = this.permissions.qualifierFor(actor.permissions, 'field.progress.read');
 
     return withTenant(this.db, { orgId: actor.orgId }, async (trx) => {
-      let qb = trx.selectFrom('app.progress_entries as p')
+      /**
+       * Paginate FIRST, then join.
+       *
+       * The obvious query — join everything, order by id, limit 50 — reads every
+       * row for the project and top-N sorts it: 48 ms and "Rows Removed by Join
+       * Filter: 7500" at one year and one project, growing linearly with
+       * everything the site ever records.
+       *
+       * `progress_entries_keyset_idx` answers the paginated question in 0.1 ms on
+       * its own, but the planner will not choose it once five display joins are in
+       * the same statement — it drives from the seven-row work_items table and
+       * sorts the result instead.
+       *
+       * Choosing the page of ids first makes the plan structural rather than a
+       * matter of the planner's estimate, and bounds the join work to 50 rows
+       * however large the table gets.
+       */
+      let page = trx.selectFrom('app.progress_entries as p')
+        .select('p.id')
+        .where('p.project_id', '=', projectId)
+        .orderBy('p.id', 'desc')
+        .limit(opts.limit + 1);
+
+      // The record-level qualifier, applied as a predicate rather than a filter in
+      // application code: a supervisor sees their own entries and nobody else's,
+      // and the database is what enforces it.
+      if (qualifier === 'own_created') page = page.where('p.reported_by', '=', actor.userId);
+      if (opts.status) page = page.where('p.verification_status', '=', opts.status as 'reported');
+      if (opts.locationId) page = page.where('p.location_id', '=', opts.locationId);
+      if (opts.workItemId) page = page.where('p.work_item_id', '=', opts.workItemId);
+      if (opts.reportedBy) page = page.where('p.reported_by', '=', opts.reportedBy);
+      if (opts.from) page = page.where('p.executed_on', '>=', opts.from);
+      if (opts.to) page = page.where('p.executed_on', '<=', opts.to);
+      if (opts.cursor) page = page.where('p.id', '<', opts.cursor);
+
+      const ids = (await page.execute()).map((r) => r.id);
+      if (ids.length === 0) return { data: [], next_cursor: null, has_more: false };
+
+
+      const qb = trx.selectFrom('app.progress_entries as p')
         .innerJoin('app.work_items as w', 'w.id', 'p.work_item_id')
         .innerJoin('app.units as u', 'u.id', 'p.unit_id')
         .leftJoin('app.location_paths as lp', 'lp.location_id', 'p.location_id')
@@ -407,21 +446,9 @@ export class ProgressService {
                  'u.code as unit', 'lp.display_path as location',
                  'ru.name as reported_by_name', 'vu.name as verified_by_name'])
         .orderBy('p.id', 'desc')
-        .limit(opts.limit + 1)
-        .where('p.project_id', '=', projectId);
-
-      // The record-level qualifier, applied as a predicate rather than a filter
-      // in application code: a supervisor sees their own entries and nobody
-      // else's, and the database is what enforces it.
-      if (qualifier === 'own_created') qb = qb.where('p.reported_by', '=', actor.userId);
-
-      if (opts.status) qb = qb.where('p.verification_status', '=', opts.status as 'reported');
-      if (opts.locationId) qb = qb.where('p.location_id', '=', opts.locationId);
-      if (opts.workItemId) qb = qb.where('p.work_item_id', '=', opts.workItemId);
-      if (opts.reportedBy) qb = qb.where('p.reported_by', '=', opts.reportedBy);
-      if (opts.from) qb = qb.where('p.executed_on', '>=', opts.from);
-      if (opts.to) qb = qb.where('p.executed_on', '<=', opts.to);
-      if (opts.cursor) qb = qb.where('p.id', '<', opts.cursor);
+        // Every predicate was applied when the page was chosen; this statement
+        // only decorates those exact rows.
+        .where('p.id', 'in', ids);
 
       const rows = await qb.execute();
       const hasMore = rows.length > opts.limit;

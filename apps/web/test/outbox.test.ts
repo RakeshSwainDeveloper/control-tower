@@ -86,3 +86,39 @@ describe('offline outbox', () => {
     expect(fired).toBe(3);
   });
 });
+
+/**
+ * The error a user sees when a request does not land.
+ *
+ * fetch() throws the same TypeError for a dead network, a refused connection
+ * and a CORS rejection. Calling all of them "you appear to be offline" sent
+ * somebody to check their wifi when the real cause was a missing
+ * Access-Control-Allow-Headers on the server.
+ */
+describe('request failures are described honestly', () => {
+  const setOnline = (v: boolean) =>
+    Object.defineProperty(navigator, 'onLine', { value: v, configurable: true });
+
+  it('says OFFLINE only when the browser is actually offline', async () => {
+    const { request, ApiError } = await import('../src/lib/api.js');
+    const original = globalThis.fetch;
+    globalThis.fetch = (() => Promise.reject(new TypeError('Failed to fetch'))) as typeof fetch;
+
+    setOnline(false);
+    await expect(request('GET', '/anything')).rejects.toThrow(/offline/i);
+
+    setOnline(true);
+    try {
+      await request('GET', '/anything');
+      throw new Error('should have thrown');
+    } catch (e) {
+      const err = e as InstanceType<typeof ApiError>;
+      expect(err.problem.title).toBe('Could not reach the server');
+      expect(err.message).not.toMatch(/offline/i);
+      // And it must not imply the user lost anything.
+      expect(err.message).toMatch(/has been lost|Nothing you entered/i);
+    }
+    globalThis.fetch = original;
+    setOnline(true);
+  });
+});

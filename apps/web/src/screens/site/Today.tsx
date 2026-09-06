@@ -98,6 +98,16 @@ export function Today() {
 
       <section className="stack-2">
         <div className="row-between">
+          <h2 className="label">Recorded here before</h2>
+          <Link to="/site/progress/history" className="small">History</Link>
+        </div>
+        <p className="xs muted">
+          What was recorded at a location, and whether it was accepted.
+        </p>
+      </section>
+
+      <section className="stack-2">
+        <div className="row-between">
           <h2 className="label">Waiting for you</h2>
           <Link to="/site/work" className="small">See all</Link>
         </div>

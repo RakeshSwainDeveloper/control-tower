@@ -16,6 +16,7 @@
  *    become a state on a row, not an interruption.
  */
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { uuid } from '../crypto.js';
 
 export type OutboxState = 'pending' | 'sending' | 'sent' | 'conflict' | 'attention';
 
@@ -85,7 +86,7 @@ export async function enqueue(input: {
   const now = Date.now();
   const item: OutboxItem = {
     // Minted here, once. Everything downstream depends on this not changing.
-    client_uuid: input.clientUuid ?? crypto.randomUUID(),
+    client_uuid: input.clientUuid ?? uuid(),
     entity: input.entity,
     op: input.op ?? 'create',
     payload: input.payload,
@@ -108,7 +109,7 @@ export async function attachBlob(clientUuid: string, blob: Blob, meta: {
   gpsLat?: number; gpsLng?: number; gpsUnavailableReason?: string;
 }): Promise<string> {
   const rec: PendingBlob = {
-    id: crypto.randomUUID(),
+    id: uuid(),
     client_uuid: clientUuid,
     blob, mime: meta.mime, captured_at: meta.capturedAt,
     ...(meta.gpsLat !== undefined ? { gps_lat: meta.gpsLat } : {}),

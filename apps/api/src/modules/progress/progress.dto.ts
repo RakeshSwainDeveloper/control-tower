@@ -63,3 +63,10 @@ export const gapSchema = z.object({
 });
 
 export const missingSchema = z.object({ from: isoDate, to: isoDate });
+
+export const listReportsSchema = z.object({
+  cursor: isoDate.optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(60),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+}).strict();

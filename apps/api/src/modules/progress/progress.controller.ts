@@ -7,7 +7,7 @@ import { ProgressService, type ProgressActor } from './progress.service.js';
 import { DailyReportService } from './daily-report.service.js';
 import {
   recordProgressSchema, verifySchema, listProgressSchema,
-  dailyReportSchema, amendSchema, gapSchema, missingSchema,
+  dailyReportSchema, amendSchema, gapSchema, missingSchema, listReportsSchema,
 } from './progress.dto.js';
 
 const actorOf = (u: AuthenticatedUser): ProgressActor => ({
@@ -93,6 +93,34 @@ export class ProgressController {
     @Query('date') date?: string,
   ) {
     return this.reports.today(actorOf(u), id, date);
+  }
+
+  /**
+   * The office list, and one report in full.
+   *
+   * Plural, because `GET .../daily-report` singular answers "what is happening
+   * on this date" — a different question, and the one the site surface asks.
+   * S-W05 was written against the singular route and rendered an empty list
+   * from a payload that was never a list.
+   */
+  @Get('projects/:id/daily-reports')
+  @RequirePermission('field.daily_report.read')
+  listReports(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query(new ZodValidationPipe(listReportsSchema)) q: never,
+  ) {
+    return this.reports.list(actorOf(u), id, q as unknown as { limit: number });
+  }
+
+  @Get('projects/:id/daily-reports/:reportId')
+  @RequirePermission('field.daily_report.read')
+  oneReport(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('reportId', ParseUUIDPipe) reportId: string,
+  ) {
+    return this.reports.one(actorOf(u), id, reportId);
   }
 
   @Post('projects/:id/daily-report')

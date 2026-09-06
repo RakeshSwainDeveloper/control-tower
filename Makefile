@@ -61,6 +61,17 @@ migrate: ## Apply pending migrations
 migrate-status: ## Show migration status
 	$(DC) exec api pnpm --filter @ct/api migrate:status
 
+# `e2e` is also a directory, so make would consider the target already built.
+.PHONY: e2e
+e2e: ## Run the nine journeys end to end against the running stack
+	$(DC) --profile e2e run --rm e2e sh -c "pnpm install --silent && pnpm exec playwright test"
+
+restore-drill: ## Dump, restore into a copy, and prove the copy is usable
+	$(DC) exec -T postgres bash /ct-scripts/restore-drill.sh
+
+seed-bulk: ## Load 12 months of traffic (the P8 performance fixture)
+	$(DC) exec api pnpm --filter @ct/api seed:bulk
+
 seed: ## Load the demo tenant
 	$(DC) exec api pnpm --filter @ct/api seed
 

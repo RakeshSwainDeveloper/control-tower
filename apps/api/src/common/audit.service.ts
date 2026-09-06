@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Transaction } from 'kysely';
+import { sql, type Transaction } from 'kysely';
 import type { DB, AuditAction, AuditSource } from '@ct/db';
 import { currentContext } from './correlation.js';
 
@@ -34,6 +34,42 @@ export interface AuditEntry {
 export class AuditService {
   async write(trx: Transaction<DB>, orgId: string, entry: AuditEntry): Promise<void> {
     const ctx = currentContext();
+
+    /**
+     * The grant the TRANSACTION declared, not one carried alongside it.
+     *
+     * withTenant() sets `app.current_grant_id` on every transaction, and until
+     * Phase 7 this method read `ctx?.grantId` from the async-local request
+     * context instead — which nothing populates. The result: 0 of 40 audit
+     * rows carried a grant and 9 carried a label, those nine being the call
+     * sites where somebody remembered to pass it by hand.
+     *
+     * FR-030 is why both columns exist. Reading what the transaction itself
+     * declared removes the parallel context that has to be kept in step.
+     */
+    const grantId = entry.actorGrantId
+      ?? ctx?.grantId
+      ?? (await sql<{ g: string | null }>`
+            SELECT NULLIF(current_setting('app.current_grant_id', true), '') AS g
+          `.execute(trx)).rows[0]?.g
+      ?? null;
+
+    /**
+     * The label is SNAPSHOTTED, not joined at read time.
+     *
+     * A company that renames "Site Supervisor" to "Site In-Charge" next year
+     * must not silently rewrite what last year's approvals say. One indexed
+     * lookup per audited operation is the price of that, and an audited
+     * operation is already doing real work.
+     */
+    let label = entry.responsibilityLabel ?? ctx?.responsibilityLabel ?? null;
+    if (!label && grantId) {
+      const g = await trx.selectFrom('app.role_grants')
+        .select('responsibility_label')
+        .where('id', '=', grantId)
+        .executeTakeFirst();
+      label = g?.responsibility_label ?? null;
+    }
     await trx
       .insertInto('app.audit_log')
       .values({
@@ -43,9 +79,9 @@ export class AuditService {
         entity_id: entry.entityId,
         action: entry.action,
         actor_user_id: entry.actorUserId ?? ctx?.userId ?? null,
-        actor_grant_id: entry.actorGrantId ?? ctx?.grantId ?? null,
+        actor_grant_id: grantId,
         // FR-030: which responsibility was exercised, not merely who acted.
-        responsibility_label: entry.responsibilityLabel ?? ctx?.responsibilityLabel ?? null,
+        responsibility_label: label,
         source: entry.source ?? ctx?.source ?? 'api',
         device_id: ctx?.deviceId ?? null,
         app_version: ctx?.appVersion ?? null,

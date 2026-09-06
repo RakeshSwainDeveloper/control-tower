@@ -1,4 +1,8 @@
 node_modules/
+# pnpm's content-addressed cache. `pnpm install` inside the e2e container
+# writes 444 files here and only node_modules/ was ignored, so `git add e2e/`
+# would have committed 13 MB of package cache.
+.pnpm-store/
 dist/
 build/
 .turbo/

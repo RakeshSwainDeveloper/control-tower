@@ -53,19 +53,14 @@ export function OfficeShell() {
         <ul className="grow" style={{ padding: '0 var(--s2)' }}>
           {NAV.filter((n) => !n.permission || can(n.permission)).map((n) => (
             <li key={n.to}>
+              {/* .nav-link carries the active rule as well as the tint —
+                  colour is never the sole carrier of meaning (§6). */}
               <NavLink
                 to={n.to} end={n.to === '/office'}
-                style={({ isActive }) => ({
-                  display: 'flex', alignItems: 'center', gap: 'var(--s3)',
-                  padding: 'var(--s2) var(--s3)', margin: '1px 0',
-                  borderRadius: 'var(--r)', textDecoration: 'none',
-                  fontSize: 'var(--text-base)', minHeight: 'var(--touch-office)',
-                  background: isActive ? 'var(--accent-weak)' : 'transparent',
-                  color: isActive ? 'var(--accent)' : 'var(--fg)',
-                  fontWeight: isActive ? 600 : 400,
-                })}
+                className="nav-link"
               >
-                {/* Icon PLUS label, never icon alone (§6 checklist). */}
+                {/* Icon PLUS label, never icon alone (§6 checklist).
+                    NavLink adds `active` itself; the stylesheet styles it. */}
                 <n.icon size={17} aria-hidden style={{ flex: 'none' }} /> {n.label}
               </NavLink>
             </li>

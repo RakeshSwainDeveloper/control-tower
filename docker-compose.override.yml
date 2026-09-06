@@ -71,7 +71,9 @@ services:
     command: ["pnpm", "--filter", "@ct/web", "dev", "--host", "0.0.0.0"]
     ports: ["5173:5173"]
     environment:
-      VITE_API_BASE_URL: http://localhost:3000/api/v1
+      # Relative, so the browser talks to whatever host served the page and Vite
+      # proxies onward. Works from a laptop, a container and a phone alike.
+      VITE_API_BASE_URL: /api/v1
     volumes:
       - ./apps:/app/apps
       - ./packages:/app/packages
@@ -84,3 +86,23 @@ services:
       timeout: 3s
       retries: 20
       start_period: 30s
+
+  # End-to-end, on demand only: `make e2e`. It is in the override file because
+  # it is a development tool, and it uses `profiles` so `make up` never starts
+  # a browser container nobody asked for.
+  e2e:
+    profiles: ["e2e"]
+    build:
+      context: .
+      dockerfile: infra/docker/e2e.Dockerfile
+    environment:
+      E2E_BASE_URL: http://web:5173
+      E2E_API_URL: http://api:3000/api/v1
+      CI: "true"
+    volumes:
+      - ./e2e:/work
+    working_dir: /work
+    networks: [controltower]
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_healthy }

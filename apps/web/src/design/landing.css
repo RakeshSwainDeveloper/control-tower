@@ -1,0 +1,197 @@
+/* ============================================================================
+   The public landing page.
+   Loaded only on that route (it is a lazy chunk), so none of this reaches a
+   supervisor's phone when they open the app.
+   ========================================================================= */
+
+.lp { background: var(--card); }
+.lp-wrap { width: min(76rem, 100% - 2.5rem); margin-inline: auto; }
+
+/* ── Header ───────────────────────────────────────────────────── */
+.lp-header {
+  position: sticky; top: 0; z-index: 20;
+  padding: var(--s3) 0;
+  background: rgb(255 255 255 / 0.86);
+  backdrop-filter: saturate(140%) blur(10px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.lp-nav-link { color: var(--fg-muted); }
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+.lp-hero {
+  padding: var(--s16) 0 var(--s20);
+  background:
+    radial-gradient(60% 50% at 15% 0%, rgb(3 105 161 / 0.06), transparent 70%),
+    linear-gradient(180deg, var(--n-50), var(--card));
+  border-bottom: 1px solid var(--border-subtle);
+}
+.lp-hero-grid { display: grid; gap: var(--s10); align-items: center; }
+@media (min-width: 60rem) { .lp-hero-grid { grid-template-columns: 1.05fr 1fr; gap: var(--s12); } }
+
+.lp-eyebrow {
+  display: inline-flex; align-items: center; gap: var(--s2); align-self: flex-start;
+  padding: var(--s1) var(--s3); border-radius: var(--r-full);
+  background: var(--accent-weaker); border: 1px solid var(--accent-weak);
+  color: var(--accent); font-size: var(--text-xs); font-weight: 600;
+  letter-spacing: var(--track-wide); text-transform: uppercase;
+}
+.lp-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+.lp-h1 {
+  font-size: clamp(2rem, 5.2vw, 3.4rem);
+  line-height: 1.06; letter-spacing: -0.03em; font-weight: 680;
+  max-width: 18ch;
+}
+/* A hand-drawn rule under one word rather than a highlighter block: it marks
+   the word the sentence turns on without shouting. */
+.lp-underline { position: relative; white-space: nowrap; }
+.lp-underline::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0.06em; height: 0.14em;
+  background: var(--accent); opacity: 0.28; border-radius: var(--r-full);
+}
+.lp-lede {
+  font-size: clamp(1rem, 1.6vw, 1.1875rem);
+  line-height: 1.6; color: var(--fg-muted); max-width: 44ch;
+}
+.lp-cta { min-height: 46px; padding-inline: var(--s6); font-size: var(--text-md); font-weight: 600; }
+.lp-cta-ghost { background: transparent; border-color: rgb(255 255 255 / 0.3); color: #fff; }
+.lp-cta-ghost:hover:not(:disabled) { background: rgb(255 255 255 / 0.1); border-color: rgb(255 255 255 / 0.5); }
+
+.lp-h2 { font-size: clamp(1.5rem, 3vw, 2.125rem); line-height: 1.15; letter-spacing: -0.025em; max-width: 20ch; }
+.lp-h3 { font-size: var(--text-xl); letter-spacing: var(--track-tight); }
+.lp-body { color: var(--fg-muted); line-height: 1.65; max-width: 52ch; }
+.lp-kicker {
+  display: inline-flex; align-items: center; gap: var(--s2); align-self: flex-start;
+  color: var(--accent); font-size: var(--text-xs); font-weight: 700;
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+}
+
+/* ── Scroll section ───────────────────────────────────────────────
+   400vh of scroll driving one sticky viewport. The height is what gives
+   the animation room; the sticky child is what keeps it on screen. */
+.lp-scroll { height: 400vh; position: relative; background: var(--n-50); }
+.lp-sticky {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; align-items: center; overflow: hidden;
+}
+.lp-scroll-grid { display: grid; gap: var(--s8); align-items: center; }
+@media (min-width: 60rem) { .lp-scroll-grid { grid-template-columns: 0.9fr 1.1fr; gap: var(--s12); } }
+
+.lp-stages { display: flex; flex-direction: column; gap: var(--s1); }
+.lp-stages li {
+  display: flex; align-items: flex-start; gap: var(--s3);
+  padding: var(--s2) var(--s3); border-radius: var(--r);
+  color: var(--fg-subtle);
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.lp-stages li[data-passed="true"] { color: var(--fg-muted); }
+.lp-stages li[data-active="true"] { background: var(--card); color: var(--fg); box-shadow: var(--shadow-xs); }
+.lp-stage-dot {
+  width: 9px; height: 9px; border-radius: 50%; margin-top: 7px; flex: none;
+  background: var(--n-300);
+  transition: background var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.lp-stages li[data-passed="true"] .lp-stage-dot { background: var(--st-verified); }
+.lp-stages li[data-active="true"] .lp-stage-dot { background: var(--accent); transform: scale(1.35); }
+
+.lp-scene {
+  margin: 0; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r-xl); padding: var(--s5); box-shadow: var(--shadow-md);
+}
+.lp-scene-cap { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); }
+.lp-progress {
+  flex: 1; height: 5px; border-radius: var(--r-full);
+  background: var(--n-200); overflow: hidden;
+}
+.lp-progress > span {
+  display: block; height: 100%; background: var(--accent);
+  border-radius: var(--r-full); transition: width 80ms linear;
+}
+
+/* On a phone the sticky scene would eat the viewport and the stage list
+   would be pushed off it. Shorter scroll, scene above the list, both fit. */
+@media (max-width: 59.98rem) {
+  .lp-scroll { height: 260vh; }
+  .lp-sticky { height: auto; min-height: 100vh; padding: var(--s10) 0; align-items: flex-start; }
+  .lp-scroll-grid { grid-template-columns: 1fr; }
+  .lp-scene { order: -1; padding: var(--s3); }
+  .lp-stages li { padding: var(--s2); }
+}
+
+/* ── Story sections ───────────────────────────────────────────── */
+.lp-story { padding: var(--s16) 0; border-bottom: 1px solid var(--border-subtle); }
+.lp-story-grid { display: grid; gap: var(--s8); align-items: center; }
+@media (min-width: 60rem) {
+  .lp-story-grid { grid-template-columns: 1fr 1fr; gap: var(--s12); }
+  /* The panel leads on alternate sections so the page has a rhythm rather
+     than a column of identical rows. */
+  .lp-story-reverse > :first-child { order: 2; }
+}
+
+/* ── Product panels ───────────────────────────────────────────── */
+.lp-panel {
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--card); box-shadow: var(--shadow-md); overflow: hidden;
+}
+.lp-panel-hero { box-shadow: var(--shadow-lg); }
+.lp-panel-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: var(--s3) var(--s4);
+  background: var(--n-50); border-bottom: 1px solid var(--border-subtle);
+}
+.lp-panel-bar > span:not(.lp-panel-title) {
+  width: 9px; height: 9px; border-radius: 50%; background: var(--n-300);
+}
+.lp-panel-title {
+  margin-left: var(--s3); font-size: var(--text-xs); font-weight: 600;
+  color: var(--fg-subtle); letter-spacing: var(--track-wide); text-transform: uppercase;
+}
+.lp-panel-body { padding: var(--s4); }
+
+.lp-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3); }
+@media (min-width: 30rem) { .lp-metrics { grid-template-columns: repeat(4, 1fr); } }
+.lp-metric {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: var(--s3); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md); background: var(--n-25);
+}
+.lp-metric strong {
+  font-size: var(--text-xl); letter-spacing: var(--track-tight);
+  font-variant-numeric: tabular-nums;
+}
+.lp-metric-sub { color: var(--n-400); }
+.lp-panel-flags { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
+
+.lp-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  padding: var(--s3); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md); background: var(--n-25);
+}
+.lp-qty {
+  display: flex; align-items: baseline; justify-content: flex-end; gap: var(--s2);
+  padding: var(--s3) var(--s4); border: 1px solid var(--border);
+  border-radius: var(--r-md); background: var(--card);
+}
+.lp-qty .num { font-size: var(--text-2xl); font-weight: 650; letter-spacing: var(--track-tight); }
+
+/* ── Bands ────────────────────────────────────────────────────── */
+.lp-band { padding: var(--s16) 0; background: var(--n-50); border-bottom: 1px solid var(--border-subtle); }
+.lp-offline { display: flex; gap: var(--s5); align-items: flex-start; }
+.lp-offline > svg { color: var(--accent); flex: none; margin-top: 4px; }
+
+.lp-cta-band {
+  padding: var(--s20) 0; background: var(--primary);
+  background-image: radial-gradient(60% 60% at 50% 0%, rgb(56 189 248 / 0.14), transparent 70%);
+}
+
+.lp-footer { padding: var(--s8) 0; background: var(--n-950); color: rgb(255 255 255 / 0.62); }
+.lp-footer strong { color: #fff; }
+
+/* Motion: the scene is driven by scroll position, so with reduced motion it
+   simply renders finished. The transitions here are the only other movement,
+   and the global reduced-motion rule already zeroes them. */
+@media (prefers-reduced-motion: reduce) {
+  .lp-scroll { height: auto; }
+  .lp-sticky { position: static; height: auto; min-height: 0; padding: var(--s16) 0; }
+  .lp-header { backdrop-filter: none; background: var(--card); }
+}

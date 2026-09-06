@@ -19,3 +19,20 @@ export function setOnline(value: boolean) {
 }
 
 vi.stubGlobal('scrollTo', () => undefined);
+
+// jsdom implements neither of these. The landing page's scroll hook and the
+// skeletons both ask about reduced motion; without a stub every test that
+// renders them fails on the environment rather than on the code.
+if (!window.matchMedia) {
+  window.matchMedia = ((query: string) => ({
+    matches: false, media: query, onchange: null,
+    addEventListener: () => undefined, removeEventListener: () => undefined,
+    addListener: () => undefined, removeListener: () => undefined,
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia;
+}
+if (!window.requestAnimationFrame) {
+  window.requestAnimationFrame = ((cb: FrameRequestCallback) =>
+    setTimeout(() => cb(performance.now()), 0) as unknown as number);
+  window.cancelAnimationFrame = ((id: number) => clearTimeout(id));
+}

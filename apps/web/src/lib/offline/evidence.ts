@@ -12,6 +12,7 @@
  */
 import { api, ApiError } from '../api.js';
 import { db } from './outbox.js';
+import { uuid, sha256 } from '../crypto.js';
 
 export interface CaptureMeta {
   kind: 'photo' | 'video' | 'document';
@@ -49,14 +50,6 @@ export function subscribeEvidence(fn: () => void): () => void {
 }
 const notify = () => { for (const l of listeners) l(); };
 
-/** SHA-256 of the bytes, so the server can recognise a duplicate. */
-async function sha256(blob: Blob): Promise<string> {
-  const buf = await blob.arrayBuffer();
-  const digest = await crypto.subtle.digest('SHA-256', buf);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
 /**
  * GPS, with a deliberate time limit.
  *
@@ -86,7 +79,7 @@ function locate(): Promise<{ lat: number; lng: number; accuracyM?: number } | { 
 
 /** Capture. Returns as soon as the bytes are safe on the device. */
 export async function capture(file: File, meta: CaptureMeta): Promise<PendingEvidence> {
-  const id = crypto.randomUUID();
+  const id = uuid();
   const capturedAt = new Date().toISOString();
   const [hash, position] = await Promise.all([sha256(file), locate()]);
 
@@ -140,7 +133,10 @@ export async function upload(id: string): Promise<string> {
     const presign = await api.post<{
       deduplicated: boolean;
       evidence_id: string;
-      upload?: { url: string; method: string; headers?: Record<string, string> };
+      // `upload_url`, not `url`. Reading the wrong field silently produced
+      // `undefined`, fetch() threw, and every photograph stayed on the device
+      // for ever with no error the user could act on.
+      upload?: { mode: string; upload_url: string; storage_key: string; expires_at: string };
     }>('/evidence/presign', {
       kind: rec.meta.kind,
       purpose: rec.meta.purpose,
@@ -158,10 +154,10 @@ export async function upload(id: string): Promise<string> {
     });
 
     // Already on the server, byte for byte. Nothing to upload.
-    if (!presign.deduplicated && presign.upload) {
-      const put = await fetch(presign.upload.url, {
-        method: presign.upload.method || 'PUT',
-        headers: { 'content-type': rec.mime, ...(presign.upload.headers ?? {}) },
+    if (!presign.deduplicated && presign.upload?.upload_url) {
+      const put = await fetch(presign.upload.upload_url, {
+        method: 'PUT',
+        headers: { 'content-type': rec.mime },
         body: rec.blob,
       });
       if (!put.ok) throw new Error(`Storage rejected the upload (${put.status})`);
